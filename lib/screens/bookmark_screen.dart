@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../data/resep_data.dart';
+import 'resep_detail_screen.dart';
 
 class BookmarkScreen extends StatefulWidget {
   const BookmarkScreen({super.key});
@@ -16,32 +18,9 @@ class _BookmarkScreenState extends State<BookmarkScreen>
   static const _terracotta = Color(0xFFC6572F);
   static const _creamBg = Color(0xFFFDFAF7);
 
-  final List<Map<String, dynamic>> _savedRecipes = [
-    {
-      'name': 'Rendang Daging Sapi',
-      'region': 'MINANGKABAU',
-      'image': 'https://images.unsplash.com/photo-1574653853027-5382a3d23a15?auto=format&fit=crop&w=400&q=80',
-      'saved': true,
-    },
-    {
-      'name': 'Sate Madura',
-      'region': 'JAWA TIMUR',
-      'image': 'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=400&q=80',
-      'saved': true,
-    },
-    {
-      'name': 'Gado-Gado Betawi',
-      'region': 'BETAWI',
-      'image': 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=400&q=80',
-      'saved': true,
-    },
-    {
-      'name': 'Soto Gading Solo',
-      'region': 'SOLO',
-      'image': 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=400&q=80',
-      'saved': true,
-    },
-  ];
+  List<ResepData> get _savedRecipes {
+    return kResepList.where((r) => r.isBookmarked).toList();
+  }
 
   @override
   void initState() {
@@ -256,8 +235,16 @@ class _BookmarkScreenState extends State<BookmarkScreen>
     );
   }
 
-  Widget _buildSavedCard(Map<String, dynamic> recipe, int index) {
-    return Column(
+  Widget _buildSavedCard(ResepData recipe, int index) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ResepDetailScreen(resep: recipe),
+          ),
+        ).then((_) => setState(() {}));
+      },
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Image
@@ -268,7 +255,7 @@ class _BookmarkScreenState extends State<BookmarkScreen>
                 borderRadius: BorderRadius.circular(14),
                 child: SizedBox.expand(
                   child: Image.network(
-                    recipe['image'] as String,
+                    recipe.imageUrls.first,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) =>
                         Container(color: _brown.withValues(alpha: 0.3)),
@@ -286,7 +273,7 @@ class _BookmarkScreenState extends State<BookmarkScreen>
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    recipe['region'] as String,
+                    recipe.daerah.toUpperCase(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 8,
@@ -303,7 +290,7 @@ class _BookmarkScreenState extends State<BookmarkScreen>
                 child: GestureDetector(
                   onTap: () {
                     setState(() {
-                      _savedRecipes[index]['saved'] = !(_savedRecipes[index]['saved'] as bool);
+                      recipe.isBookmarked = !recipe.isBookmarked;
                     });
                   },
                   child: Container(
@@ -314,11 +301,11 @@ class _BookmarkScreenState extends State<BookmarkScreen>
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      recipe['saved'] as bool
+                      recipe.isBookmarked
                           ? Icons.bookmark_rounded
                           : Icons.bookmark_border_rounded,
                       size: 15,
-                      color: recipe['saved'] as bool ? _terracotta : Colors.grey,
+                      color: recipe.isBookmarked ? _terracotta : Colors.grey,
                     ),
                   ),
                 ),
@@ -329,7 +316,7 @@ class _BookmarkScreenState extends State<BookmarkScreen>
         const SizedBox(height: 7),
         // Name
         Text(
-          recipe['name'] as String,
+          recipe.nama,
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
@@ -339,6 +326,7 @@ class _BookmarkScreenState extends State<BookmarkScreen>
           overflow: TextOverflow.ellipsis,
         ),
       ],
+      ),
     );
   }
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../data/resep_data.dart';
+import 'resep_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -22,22 +24,11 @@ class _SearchScreenState extends State<SearchScreen> {
     'Semua', 'Nusantara', 'Tradisional', 'Modern', 'Vegetarian', 'Dessert',
   ];
 
-  final List<Map<String, dynamic>> _allRecipes = [
-    {'name': 'Rendang Padang', 'region': 'SUMATERA BARAT', 'rating': 4.9, 'image': 'https://images.unsplash.com/photo-1574653853027-5382a3d23a15?auto=format&fit=crop&w=400&q=80', 'time': '120 menit'},
-    {'name': 'Gudeg Yogyakarta', 'region': 'YOGYAKARTA', 'rating': 4.7, 'image': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=400&q=80', 'time': '90 menit'},
-    {'name': 'Soto Betawi', 'region': 'DKI JAKARTA', 'rating': 4.6, 'image': 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=400&q=80', 'time': '60 menit'},
-    {'name': 'Ayam Betutu', 'region': 'BALI', 'rating': 4.8, 'image': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=400&q=80', 'time': '180 menit'},
-    {'name': 'Pempek Palembang', 'region': 'SUMATERA SELATAN', 'rating': 4.5, 'image': 'https://images.unsplash.com/photo-1512058454905-6b841e7ad132?auto=format&fit=crop&w=400&q=80', 'time': '45 menit'},
-    {'name': 'Sate Madura', 'region': 'JAWA TIMUR', 'rating': 4.7, 'image': 'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=400&q=80', 'time': '40 menit'},
-    {'name': 'Gado-Gado Betawi', 'region': 'DKI JAKARTA', 'rating': 4.4, 'image': 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=400&q=80', 'time': '30 menit'},
-    {'name': 'Coto Makassar', 'region': 'SULAWESI SELATAN', 'rating': 4.6, 'image': 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=400&q=80', 'time': '75 menit'},
-  ];
-
-  List<Map<String, dynamic>> get _filteredRecipes {
-    return _allRecipes.where((r) {
+  List<ResepData> get _filteredRecipes {
+    return kResepList.where((r) {
       final matchQuery = _searchQuery.isEmpty ||
-          (r['name'] as String).toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (r['region'] as String).toLowerCase().contains(_searchQuery.toLowerCase());
+          r.nama.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          r.daerah.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchQuery;
     }).toList();
   }
@@ -242,8 +233,16 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildRecipeCard(Map<String, dynamic> recipe) {
-    return Container(
+  Widget _buildRecipeCard(ResepData recipe) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ResepDetailScreen(resep: recipe),
+          ),
+        );
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -266,7 +265,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
                   child: SizedBox.expand(
                     child: Image.network(
-                      recipe['image'] as String,
+                      recipe.imageUrls.first,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(color: _brown.withValues(alpha: 0.3)),
                     ),
@@ -283,7 +282,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      recipe['region'] as String,
+                      recipe.daerah.toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 8,
@@ -297,14 +296,25 @@ class _SearchScreenState extends State<SearchScreen> {
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        recipe.isBookmarked = !recipe.isBookmarked;
+                      });
+                    },
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        recipe.isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                        size: 14,
+                        color: recipe.isBookmarked ? _terracotta : _brown,
+                      ),
                     ),
-                    child: const Icon(Icons.bookmark_border_rounded, size: 14, color: _brown),
                   ),
                 ),
               ],
@@ -317,7 +327,7 @@ class _SearchScreenState extends State<SearchScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  recipe['name'] as String,
+                  recipe.nama,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
@@ -332,14 +342,14 @@ class _SearchScreenState extends State<SearchScreen> {
                     const Icon(Icons.star_rounded, color: _gold, size: 12),
                     const SizedBox(width: 3),
                     Text(
-                      '${recipe['rating']}',
+                      '${recipe.rating}',
                       style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600),
                     ),
                     const Spacer(),
                     Icon(Icons.access_time_rounded, size: 11, color: Colors.grey[400]),
                     const SizedBox(width: 2),
                     Text(
-                      recipe['time'] as String,
+                      '${recipe.durasiMasak} mnt',
                       style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                     ),
                   ],
@@ -348,6 +358,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

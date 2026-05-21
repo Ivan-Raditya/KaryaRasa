@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../data/resep_data.dart';
+import 'resep_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -426,34 +428,20 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              _rekomendasiCard(
-                'Gudeg Jogja Istimewa',
-                'Nangka muda manis yang dimasak perlahan dengan santan kental khas Yogyakarta.',
-                'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80',
-                4,
-                419,
-                liked: true,
-              ),
-              const SizedBox(width: 14),
-              _rekomendasiCard(
-                'Soto Betawi',
-                'Sup daging sapi berkuah santan gurih dengan rempah khas Betawi yang kaya rasa.',
-                'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=400&q=80',
-                5,
-                312,
-                liked: false,
-              ),
-              const SizedBox(width: 14),
-              _rekomendasiCard(
-                'Rendang Padang',
-                'Daging sapi yang dimasak dengan bumbu rempah khas Minangkabau hingga kering.',
-                'https://images.unsplash.com/photo-1574653853027-5382a3d23a15?auto=format&fit=crop&w=400&q=80',
-                5,
-                587,
-                liked: false,
-              ),
-            ],
+            children: kResepList.take(3).map((resep) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 14),
+                child: _rekomendasiCard(
+                  resep.nama,
+                  resep.sejarahSingkat,
+                  resep.imageUrls.first,
+                  5,
+                  120, // dummy review count
+                  resep: resep,
+                  liked: resep.isBookmarked,
+                ),
+              );
+            }).toList(),
           ),
         ),
       ],
@@ -480,8 +468,17 @@ class _HomeScreenState extends State<HomeScreen> {
     int stars,
     int reviewCount, {
     bool liked = false,
+    required ResepData resep,
   }) {
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ResepDetailScreen(resep: resep),
+          ),
+        );
+      },
+      child: Container(
       width: 200,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -576,7 +573,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
+      ),  // closes Container
+    );    // closes GestureDetector
   }
 
   // ── Belajar Sejarah Kuliner ──────────────────────────────────────────────
@@ -649,20 +647,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Text(
-                        'BACA SELENGKAPNYA',
-                        style: TextStyle(
-                          color: _gold,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.4,
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/artikel'),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'BACA SELENGKAPNYA',
+                          style: TextStyle(
+                            color: _gold,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 3),
-                      const Icon(Icons.arrow_forward_rounded, color: _gold, size: 10),
-                    ],
+                        const SizedBox(width: 3),
+                        const Icon(Icons.arrow_forward_rounded, color: _gold, size: 10),
+                      ],
+                    ),
                   ),
                 ],
               ),
