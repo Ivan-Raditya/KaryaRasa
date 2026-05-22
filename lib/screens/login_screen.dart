@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../database/database.dart';
+import '../utils/session_manager.dart';
 
 class LoginAppColors {
   static const background = Color(0xFFF8F7F6);
@@ -20,6 +22,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
+  bool _isLoading = false; // ← tambahan: loading state
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -28,6 +31,51 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // ── Logika Login ──────────────────────────────────────────────────────────
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // Validasi kosong
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackbar('Email dan kata sandi tidak boleh kosong.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final db = Database();
+      final pengguna = await db.loginPengguna(email, password);
+
+      if (!mounted) return;
+
+      if (pengguna != null) {
+        // Simpan ke session
+        SessionManager.instance.login(pengguna);
+        // Navigasi ke home
+        Navigator.of(context).pushReplacementNamed('/');
+      } else {
+        _showSnackbar('Email atau kata sandi salah.');
+      }
+    } catch (e) {
+      _showSnackbar('Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackbar(String pesan) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(pesan),
+        backgroundColor: LoginAppColors.primaryRed,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -259,25 +307,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pushReplacementNamed('/');
-                        },
+                        // Disable saat loading
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFB54D2F),
+                          disabledBackgroundColor:
+                              const Color(0xFFB54D2F).withValues(alpha: 0.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Masuk',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text(
+                                'Masuk',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -434,12 +492,11 @@ class _GooglePainter extends CustomPainter {
     final double cy = size.height / 2;
     final double r = size.width / 2;
 
-    // Draw coloured arcs
     final List<Color> colors = [
-      const Color(0xFF4285F4), // blue
-      const Color(0xFF34A853), // green
-      const Color(0xFFFBBC05), // yellow
-      const Color(0xFFEA4335), // red
+      const Color(0xFF4285F4),
+      const Color(0xFF34A853),
+      const Color(0xFFFBBC05),
+      const Color(0xFFEA4335),
     ];
     final List<double> startAngles = [-0.1, 1.48, 2.79, 4.45];
     final List<double> sweepAngles = [1.58, 1.31, 1.66, 1.94];
@@ -459,13 +516,11 @@ class _GooglePainter extends CustomPainter {
       );
     }
 
-    // White fill for center + horizontal bar
     final whitePaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx, cy), r * 0.45, whitePaint);
 
-    // Blue horizontal rectangle (right half only)
     final bluePaint = Paint()
       ..color = const Color(0xFF4285F4)
       ..style = PaintingStyle.fill;

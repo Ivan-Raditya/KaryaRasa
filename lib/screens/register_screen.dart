@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../database/database.dart';
+import '../models/pengguna.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,6 +14,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = false;
   bool _agreeToTerms = false;
+  bool _isLoading = false; // ← tambahan: loading state
   String _selectedGender = 'Laki-laki';
   DateTime? _selectedDate;
 
@@ -23,7 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _pekerjaanController = TextEditingController();
 
   static const _fieldColor = Color(0xFFEEC170);
-  static const _fieldFillColor = Color(0x80EEC170); // 50% opacity
+  static const _fieldFillColor = Color(0x80EEC170);
   static const _labelStyle = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
@@ -39,6 +42,104 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmPasswordController.dispose();
     _pekerjaanController.dispose();
     super.dispose();
+  }
+
+  // ── Logika Register ───────────────────────────────────────────────────────
+  Future<void> _handleRegister() async {
+    final nama = _namaController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    // Validasi field wajib
+    if (nama.isEmpty || email.isEmpty || password.isEmpty) {
+      _showSnackbar('Nama, email, dan password tidak boleh kosong.');
+      return;
+    }
+
+    // Validasi format email sederhana
+    if (!email.contains('@') || !email.contains('.')) {
+      _showSnackbar('Format email tidak valid.');
+      return;
+    }
+
+    // Validasi password minimal 6 karakter
+    if (password.length < 6) {
+      _showSnackbar('Password minimal 6 karakter.');
+      return;
+    }
+
+    // Validasi konfirmasi password
+    if (password != confirmPassword) {
+      _showSnackbar('Password dan konfirmasi password tidak cocok.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final db = Database();
+
+      // Cek email sudah terdaftar
+      final emailTerdaftar = await db.isEmailTerdaftar(email);
+      if (emailTerdaftar) {
+        if (mounted) _showSnackbar('Email sudah terdaftar. Silakan login.');
+        return;
+      }
+
+      // Buat username dari nama (nama tanpa spasi + angka random kecil)
+      final username = nama.toLowerCase().replaceAll(' ', '_') +
+          DateTime.now().millisecondsSinceEpoch.toString().substring(9);
+
+      // Buat objek Pengguna baru
+      final pengguna = Pengguna(
+        nama: nama,
+        email: email,
+        password: password,
+        username: username,
+        nomorTelepon: phone.isEmpty ? null : phone,
+        jenisKelamin: _selectedGender == 'Laki-laki' ? 'L' : 'P',
+        tglLahir: _selectedDate != null ? _formatDate(_selectedDate!) : null,
+        role: 'user',
+        tglBergabung: DateTime.now().toIso8601String(),
+      );
+
+      // Simpan ke database
+      await db.insertPengguna(pengguna);
+
+      if (!mounted) return;
+
+      // Tampilkan sukses lalu ke login
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Akun berhasil dibuat! Silakan login.'),
+          backgroundColor: const Color(0xFF2E7D32),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) Navigator.of(context).pushReplacementNamed('/login');
+    } catch (e) {
+      if (mounted) _showSnackbar('Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackbar(String pesan) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(pesan),
+        backgroundColor: const Color(0xFF772F1A),
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   InputDecoration _fieldDecoration({
@@ -120,9 +221,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '12/12/2004';
+  String _formatDate(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  }
+
+  String _formatDateDisplay(DateTime? dt) {
+    if (dt == null) return '12/12/2004';
+    return _formatDate(dt);
   }
 
   @override
@@ -229,7 +334,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _buildLabel('Konfirmasi Password'),
                     _buildTextField(
                       _confirmPasswordController,
-                      hint: 'fulan123asik',
+                      hint: 'Ulangi password',
                       obscure: _obscureConfirmPassword,
                       suffix: IconButton(
                         icon: Icon(
@@ -247,7 +352,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Jenis Kelamin — real dropdown
+                    // Jenis Kelamin
                     _buildLabel('Jenis Kelamin'),
                     Container(
                       decoration: BoxDecoration(
@@ -284,7 +389,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Tanggal Lahir — date picker
+                    // Tanggal Lahir
                     _buildLabel('Tanggal Lahir'),
                     GestureDetector(
                       onTap: _pickDate,
@@ -295,7 +400,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                           controller: TextEditingController(
-                            text: _formatDate(_selectedDate),
+                            text: _formatDateDisplay(_selectedDate),
                           ),
                           decoration: _fieldDecoration(
                             hint: '12/12/2004',
@@ -355,12 +460,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: 160,
                         height: 46,
                         child: ElevatedButton(
-                          onPressed: _agreeToTerms
-                              ? () {
-                                  // Handle registration
-                                  Navigator.of(context)
-                                      .pushReplacementNamed('/login');
-                                }
+                          onPressed: (_agreeToTerms && !_isLoading)
+                              ? _handleRegister
                               : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF772F1A),
@@ -371,14 +472,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Daftar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  'Daftar',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
