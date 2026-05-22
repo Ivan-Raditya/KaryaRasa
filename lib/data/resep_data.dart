@@ -21,6 +21,7 @@ class ResepData {
   final String id;
   final String nama;
   final String daerah;
+  final String kategori; // ← field baru: kategoriResep dari DB
   final String sejarahSingkat;
   final List<String> imageUrls;
   final List<BahanSection> bahanSections;
@@ -35,6 +36,7 @@ class ResepData {
     required this.id,
     required this.nama,
     required this.daerah,
+    this.kategori = 'Makanan', // ← default jika tidak ada
     required this.sejarahSingkat,
     required this.imageUrls,
     required this.bahanSections,
@@ -76,7 +78,7 @@ Future<void> loadResepFromDatabase() async {
     // Ambil langkah masak
     final langkahList = await db.getLangkahByResep(idResep);
     final langkah = langkahList
-        .map((l) => '${l.judulLangkah}: ${l.deskripsiLangkah}')
+        .map((l) => l.deskripsiLangkah)
         .toList();
 
     // Hitung total durasi
@@ -95,6 +97,7 @@ Future<void> loadResepFromDatabase() async {
       id: idResep.toString(),
       nama: resep.namaResep,
       daerah: resep.asalDaerah,
+      kategori: resep.kategoriResep, // ← ambil dari DB
       sejarahSingkat: resep.deskripsiResep,
       imageUrls: imageUrls,
       videoThumbnail: imageUrls.first,

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../data/resep_data.dart';
+import '../database/database.dart';
+import '../models/bookmark.dart';
+import '../models/koleksi_bookmark.dart';
+import '../utils/session_manager.dart';
 import 'resep_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -20,8 +24,9 @@ class _SearchScreenState extends State<SearchScreen> {
   static const _gold = Color(0xFFD9AE23);
   static const _creamBg = Color(0xFFFDFAF6);
 
+  // Kategori disesuaikan dengan nilai kategoriResep di DB
   final List<String> _categories = [
-    'Semua', 'Nusantara', 'Tradisional', 'Modern', 'Vegetarian', 'Dessert',
+    'Semua', 'Makanan', 'Minuman', 'Dessert', 'Snack', 'Vegetarian',
   ];
 
   List<ResepData> get _filteredRecipes {
@@ -29,8 +34,46 @@ class _SearchScreenState extends State<SearchScreen> {
       final matchQuery = _searchQuery.isEmpty ||
           r.nama.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           r.daerah.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchQuery;
+      // Filter kategori: cocokkan dengan field kategori yang sudah disimpan di ResepData
+      final matchCategory = _activeCategory == 'Semua' ||
+          r.kategori.toLowerCase() == _activeCategory.toLowerCase();
+      return matchQuery && matchCategory;
     }).toList();
+  }
+
+  Future<void> _toggleBookmark(ResepData recipe) async {
+    final idPengguna = SessionManager.instance.idPengguna;
+    final idResep = int.tryParse(recipe.id);
+    if (idPengguna == null || idResep == null) {
+      // Belum login — toggle lokal saja
+      setState(() => recipe.isBookmarked = !recipe.isBookmarked);
+      return;
+    }
+
+    final db = Database();
+    if (recipe.isBookmarked) {
+      // Hapus bookmark dari DB
+      await db.deleteBookmark(idResep, idPengguna);
+    } else {
+      // Pastikan ada koleksi default
+      final koleksiList = await db.getKoleksiByPengguna(idPengguna);
+      int idBookmark;
+      if (koleksiList.isEmpty) {
+        idBookmark = await db.insertKoleksi(KoleksiBookmark(
+          idPengguna: idPengguna,
+          judulBookmark: 'Favorit',
+        ));
+      } else {
+        idBookmark = koleksiList.first.idBookmark!;
+      }
+      await db.insertBookmark(Bookmark(
+        idResep: idResep,
+        idPengguna: idPengguna,
+        idBookmark: idBookmark,
+        tglDibuat: DateTime.now().toIso8601String(),
+      ));
+    }
+    setState(() => recipe.isBookmarked = !recipe.isBookmarked);
   }
 
   @override
@@ -240,125 +283,121 @@ class _SearchScreenState extends State<SearchScreen> {
           MaterialPageRoute(
             builder: (_) => ResepDetailScreen(resep: recipe),
           ),
-        );
+        ).then((_) => setState(() {}));
       },
       child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image
-          Expanded(
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                  child: SizedBox.expand(
-                    child: Image.network(
-                      recipe.imageUrls.first,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(color: _brown.withValues(alpha: 0.3)),
-                    ),
-                  ),
-                ),
-                // Region badge
-                Positioned(
-                  bottom: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _terracotta.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      recipe.daerah.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            Expanded(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                    child: SizedBox.expand(
+                      child: Image.network(
+                        recipe.imageUrls.first,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: _brown.withValues(alpha: 0.3)),
                       ),
                     ),
                   ),
-                ),
-                // Bookmark icon
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        recipe.isBookmarked = !recipe.isBookmarked;
-                      });
-                    },
+                  // Region badge
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
                     child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _terracotta.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Icon(
-                        recipe.isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        size: 14,
-                        color: recipe.isBookmarked ? _terracotta : _brown,
+                      child: Text(
+                        recipe.daerah.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          // Info
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  recipe.nama,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF2C1A10),
+                  // Bookmark icon
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: () => _toggleBookmark(recipe),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          recipe.isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                          size: 14,
+                          color: recipe.isBookmarked ? _terracotta : _brown,
+                        ),
+                      ),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.star_rounded, color: _gold, size: 12),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${recipe.rating}',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600),
-                    ),
-                    const Spacer(),
-                    Icon(Icons.access_time_rounded, size: 11, color: Colors.grey[400]),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${recipe.durasiMasak} mnt',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[400]),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+            // Info
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    recipe.nama,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2C1A10),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.star_rounded, color: _gold, size: 12),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${recipe.rating}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.access_time_rounded, size: 11, color: Colors.grey[400]),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${recipe.durasiMasak} mnt',
+                        style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

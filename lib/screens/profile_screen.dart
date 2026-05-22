@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../utils/session_manager.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -11,6 +12,10 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = SessionManager.instance;
+    final nama = session.nama.isNotEmpty ? session.nama : 'Pengguna';
+    final email = session.penggunaLogin?.email ?? '';
+
     return Scaffold(
       backgroundColor: _creamBg,
       body: Column(
@@ -47,7 +52,6 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        // "Profil" pill
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                           decoration: BoxDecoration(
@@ -68,7 +72,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // User info row (inside dark section)
+                  // User info row
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -100,45 +104,56 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 16),
-                            // Name + occupation
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Fulan bin Fulan',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: _gold,
+                            // Name + role
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    nama,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: _gold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  'Mahasiswa',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    session.penggunaLogin?.role ?? 'user',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        // Email
-                        Row(
-                          children: [
-                            const SizedBox(width: 4),
-                            Text(
-                              'fulanoeser@example.com',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[700],
+                                ],
                               ),
                             ),
                           ],
                         ),
+                        if (email.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const SizedBox(width: 4),
+                              Icon(Icons.email_outlined, size: 14, color: Colors.grey[500]),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  email,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[700],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -179,7 +194,11 @@ class ProfileScreen extends StatelessWidget {
                   _menuItem(Icons.settings_rounded, 'Pengaturan', () {}),
                   _divider(),
                   _menuItem(Icons.logout_rounded, 'Keluar', () {
-                    Navigator.of(context).pushReplacementNamed('/login');
+                    SessionManager.instance.logout();
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/login',
+                      (route) => false,
+                    );
                   }),
                 ],
               ),

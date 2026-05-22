@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../data/resep_data.dart'; // ← tambahan
+import '../data/resep_data.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,14 +13,12 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  // Animation controllers
   late AnimationController _bgController;
   late AnimationController _logoController;
   late AnimationController _taglineController;
   late AnimationController _particleController;
   late AnimationController _shimmerController;
 
-  // Animations
   late Animation<double> _bgScale;
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
@@ -38,10 +36,8 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Full-screen immersive
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    // Background slow zoom
     _bgController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3500),
@@ -50,7 +46,6 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _bgController, curve: Curves.easeInOut),
     );
 
-    // Logo
     _logoController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -65,7 +60,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Tagline
     _taglineController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -80,7 +74,6 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _taglineController, curve: Curves.easeOut),
     );
 
-    // Shimmer on logo text
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -89,7 +82,6 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
     );
 
-    // Particle/dots loading
     _particleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -98,7 +90,6 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _particleController, curve: Curves.easeInOut),
     );
 
-    // Start sequence
     _startAnimationSequence();
   }
 
@@ -112,13 +103,16 @@ class _SplashScreenState extends State<SplashScreen>
     _taglineController.forward();
     _shimmerController.repeat();
 
-    // ── Load database bersamaan dengan animasi berjalan ──────────────
-    // Jalankan keduanya paralel: tunggu animasi (2400ms) DAN load DB
-    // Mana yang lebih lama, itu yang ditunggu — user tidak nunggu blank
-    await Future.wait([
-      Future.delayed(const Duration(milliseconds: 2400)),
-      loadResepFromDatabase(),
-    ]);
+    // Load resep di background — tidak ditunggu
+    // Data akan siap saat user selesai login dan masuk home
+    // Load resep di background — error diabaikan, tidak memblokir splash
+loadResepFromDatabase().catchError((e) {
+  debugPrint('loadResep error: $e');
+}).then((_) {
+  debugPrint('loadResep selesai: ${kResepList.length} resep');
+});
+    // Tunggu animasi selesai saja
+    await Future.delayed(const Duration(milliseconds: 2400));
 
     if (mounted) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -173,17 +167,13 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // ── Decorative Spice Pattern (top right) ────────────────────
+          // ── Decorative Spice Pattern ─────────────────────────────────
           Positioned(
             top: -40,
             right: -40,
             child: Opacity(
               opacity: 0.08,
-              child: Icon(
-                Icons.spa_rounded,
-                size: 220,
-                color: _gold,
-              ),
+              child: Icon(Icons.spa_rounded, size: 220, color: _gold),
             ),
           ),
           Positioned(
@@ -191,11 +181,7 @@ class _SplashScreenState extends State<SplashScreen>
             left: -30,
             child: Opacity(
               opacity: 0.06,
-              child: Icon(
-                Icons.eco_rounded,
-                size: 180,
-                color: _gold,
-              ),
+              child: Icon(Icons.eco_rounded, size: 180, color: _gold),
             ),
           ),
 
@@ -209,7 +195,6 @@ class _SplashScreenState extends State<SplashScreen>
               children: [
                 const Spacer(flex: 2),
 
-                // Logo plate
                 AnimatedBuilder(
                   animation: _logoController,
                   builder: (_, child) => Transform.scale(
@@ -224,14 +209,12 @@ class _SplashScreenState extends State<SplashScreen>
 
                 const SizedBox(height: 28),
 
-                // Tagline
                 SlideTransition(
                   position: _taglineSlide,
                   child: FadeTransition(
                     opacity: _taglineOpacity,
                     child: Column(
                       children: [
-                        // Decorative divider
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -240,8 +223,7 @@ class _SplashScreenState extends State<SplashScreen>
                               width: 60,
                               height: 1,
                               color: _gold.withValues(alpha: 0.5),
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 8),
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
                             ),
                             _goldDot(),
                           ],
@@ -278,7 +260,6 @@ class _SplashScreenState extends State<SplashScreen>
 
                 const Spacer(flex: 3),
 
-                // Loading dots
                 FadeTransition(
                   opacity: _taglineOpacity,
                   child: _buildLoadingDots(),
@@ -296,14 +277,12 @@ class _SplashScreenState extends State<SplashScreen>
   Widget _buildLogoPlate() {
     return Column(
       children: [
-        // Ornamental ring
         Container(
           width: 110,
           height: 110,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border:
-                Border.all(color: _gold.withValues(alpha: 0.35), width: 2),
+            border: Border.all(color: _gold.withValues(alpha: 0.35), width: 2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(8),
@@ -328,8 +307,6 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
         const SizedBox(height: 20),
-
-        // KaryaRasa shimmer text
         AnimatedBuilder(
           animation: _shimmer,
           builder: (_, child) {
@@ -338,11 +315,7 @@ class _SplashScreenState extends State<SplashScreen>
                 return LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: const [
-                    Colors.white,
-                    _gold,
-                    Colors.white,
-                  ],
+                  colors: const [Colors.white, _gold, Colors.white],
                   stops: [
                     (_shimmer.value - 0.5).clamp(0.0, 1.0),
                     _shimmer.value.clamp(0.0, 1.0),

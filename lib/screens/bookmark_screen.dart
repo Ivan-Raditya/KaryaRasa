@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../data/resep_data.dart';
+import '../database/database.dart';
+import '../models/bookmark.dart';
+import '../models/koleksi_bookmark.dart';
+import '../utils/session_manager.dart';
 import 'resep_detail_screen.dart';
 
 class BookmarkScreen extends StatefulWidget {
@@ -26,6 +30,47 @@ class _BookmarkScreenState extends State<BookmarkScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _syncBookmarks();
+  }
+
+  /// Sync status bookmark dari DB saat screen dibuka
+  Future<void> _syncBookmarks() async {
+    final idPengguna = SessionManager.instance.idPengguna;
+    if (idPengguna == null) return;
+    await syncBookmarkState(idPengguna);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleBookmark(ResepData recipe) async {
+    final idPengguna = SessionManager.instance.idPengguna;
+    final idResep = int.tryParse(recipe.id);
+    if (idPengguna == null || idResep == null) {
+      setState(() => recipe.isBookmarked = !recipe.isBookmarked);
+      return;
+    }
+
+    final db = Database();
+    if (recipe.isBookmarked) {
+      await db.deleteBookmark(idResep, idPengguna);
+    } else {
+      final koleksiList = await db.getKoleksiByPengguna(idPengguna);
+      int idBookmark;
+      if (koleksiList.isEmpty) {
+        idBookmark = await db.insertKoleksi(KoleksiBookmark(
+          idPengguna: idPengguna,
+          judulBookmark: 'Favorit',
+        ));
+      } else {
+        idBookmark = koleksiList.first.idBookmark!;
+      }
+      await db.insertBookmark(Bookmark(
+        idResep: idResep,
+        idPengguna: idPengguna,
+        idBookmark: idBookmark,
+        tglDibuat: DateTime.now().toIso8601String(),
+      ));
+    }
+    setState(() => recipe.isBookmarked = !recipe.isBookmarked);
   }
 
   @override
@@ -46,22 +91,18 @@ class _BookmarkScreenState extends State<BookmarkScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Food background
                 Image.network(
                   'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(color: _brown),
                 ),
-                // Dark overlay
                 Container(color: Colors.black.withValues(alpha: 0.45)),
-                // Safe area + controls
                 SafeArea(
                   bottom: false,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
-                        // Back button
                         GestureDetector(
                           onTap: () => Navigator.of(context).pop(),
                           child: Container(
@@ -78,7 +119,6 @@ class _BookmarkScreenState extends State<BookmarkScreen>
                             ),
                           ),
                         ),
-                        // Title
                         const Expanded(
                           child: Text(
                             'Bookmark',
@@ -91,7 +131,6 @@ class _BookmarkScreenState extends State<BookmarkScreen>
                             ),
                           ),
                         ),
-                        // Search button
                         Container(
                           width: 36,
                           height: 36,
@@ -137,11 +176,8 @@ class _BookmarkScreenState extends State<BookmarkScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                // ── Resep Tab ────────────────────────────────────────────
                 _buildResepTab(),
-                // ── Artikel Tab ──────────────────────────────────────────
                 _buildEmptyTab('Belum ada artikel tersimpan', Icons.article_rounded),
-                // ── Koleksi Tab ──────────────────────────────────────────
                 _buildEmptyTab('Belum ada koleksi dibuat', Icons.collections_bookmark_rounded),
               ],
             ),
@@ -183,7 +219,6 @@ class _BookmarkScreenState extends State<BookmarkScreen>
                   border: Border.all(
                     color: _terracotta.withValues(alpha: 0.6),
                     width: 1.5,
-                    // Simulated dashed with strokeAlign trick
                   ),
                 ),
                 child: Row(
@@ -216,18 +251,41 @@ class _BookmarkScreenState extends State<BookmarkScreen>
             ),
             const SizedBox(height: 14),
 
-            // Grid 2 kolom
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 20,
-                childAspectRatio: 0.85,
+            _savedRecipes.isEmpty
+                ? _buildEmptyInline()
+                : GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 20,
+                      childAspectRatio: 0.85,
+                    ),
+                    itemCount: _savedRecipes.length,
+                    itemBuilder: (context, i) => _buildSavedCard(_savedRecipes[i]),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyInline() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(Icons.bookmark_border_rounded, size: 56, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text(
+              'Belum ada resep tersimpan',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[500],
               ),
-              itemCount: _savedRecipes.length,
-              itemBuilder: (context, i) => _buildSavedCard(_savedRecipes[i], i),
             ),
           ],
         ),
@@ -235,7 +293,7 @@ class _BookmarkScreenState extends State<BookmarkScreen>
     );
   }
 
-  Widget _buildSavedCard(ResepData recipe, int index) {
+  Widget _buildSavedCard(ResepData recipe) {
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -245,87 +303,79 @@ class _BookmarkScreenState extends State<BookmarkScreen>
         ).then((_) => setState(() {}));
       },
       child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Image
-        Expanded(
-          child: Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox.expand(
-                  child: Image.network(
-                    recipe.imageUrls.first,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Container(color: _brown.withValues(alpha: 0.3)),
-                  ),
-                ),
-              ),
-              // Region badge
-              Positioned(
-                bottom: 10,
-                left: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: _terracotta.withValues(alpha: 0.88),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    recipe.daerah.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox.expand(
+                    child: Image.network(
+                      recipe.imageUrls.first,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: _brown.withValues(alpha: 0.3)),
                     ),
                   ),
                 ),
-              ),
-              // Bookmark icon top-right
-              Positioned(
-                top: 10,
-                right: 10,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      recipe.isBookmarked = !recipe.isBookmarked;
-                    });
-                  },
+                Positioned(
+                  bottom: 10,
+                  left: 10,
                   child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _terracotta.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Icon(
-                      recipe.isBookmarked
-                          ? Icons.bookmark_rounded
-                          : Icons.bookmark_border_rounded,
-                      size: 15,
-                      color: recipe.isBookmarked ? _terracotta : Colors.grey,
+                    child: Text(
+                      recipe.daerah.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: GestureDetector(
+                    onTap: () => _toggleBookmark(recipe),
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        recipe.isBookmarked
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        size: 15,
+                        color: recipe.isBookmarked ? _terracotta : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 7),
-        // Name
-        Text(
-          recipe.nama,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2C1A10),
+          const SizedBox(height: 7),
+          Text(
+            recipe.nama,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2C1A10),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
+        ],
       ),
     );
   }
