@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/bookmark_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/artikel_screen.dart';
-import 'screens/resep_detail_screen.dart';
-import 'data/resep_data.dart';
+import 'screens/article_detail_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -37,8 +37,6 @@ class MyApp extends StatelessWidget {
         '/search':   (context) => const SearchScreen(),
         '/bookmark': (context) => const BookmarkScreen(),
         '/artikel':  (context) => const ArtikelScreen(),
-        '/resep-soto-gading': (context) =>
-            ResepDetailScreen(resep: kResepList.firstWhere((r) => r.id == 'soto-gading')),
       },
     );
   }

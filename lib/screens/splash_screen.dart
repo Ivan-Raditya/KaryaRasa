@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../data/resep_data.dart'; // ← tambahan
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -111,13 +112,18 @@ class _SplashScreenState extends State<SplashScreen>
     _taglineController.forward();
     _shimmerController.repeat();
 
-    // Navigate after 3.2s total
-    Timer(const Duration(milliseconds: 2400), () {
-      if (mounted) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
-    });
+    // ── Load database bersamaan dengan animasi berjalan ──────────────
+    // Jalankan keduanya paralel: tunggu animasi (2400ms) DAN load DB
+    // Mana yang lebih lama, itu yang ditunggu — user tidak nunggu blank
+    await Future.wait([
+      Future.delayed(const Duration(milliseconds: 2400)),
+      loadResepFromDatabase(),
+    ]);
+
+    if (mounted) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
   }
 
   @override
@@ -234,7 +240,8 @@ class _SplashScreenState extends State<SplashScreen>
                               width: 60,
                               height: 1,
                               color: _gold.withValues(alpha: 0.5),
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 8),
                             ),
                             _goldDot(),
                           ],
@@ -295,7 +302,8 @@ class _SplashScreenState extends State<SplashScreen>
           height: 110,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: _gold.withValues(alpha: 0.35), width: 2),
+            border:
+                Border.all(color: _gold.withValues(alpha: 0.35), width: 2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(8),
@@ -308,7 +316,8 @@ class _SplashScreenState extends State<SplashScreen>
                     _brown.withValues(alpha: 0.10),
                   ],
                 ),
-                border: Border.all(color: _gold.withValues(alpha: 0.6), width: 1.5),
+                border: Border.all(
+                    color: _gold.withValues(alpha: 0.6), width: 1.5),
               ),
               child: const Icon(
                 Icons.restaurant_rounded,
@@ -329,7 +338,7 @@ class _SplashScreenState extends State<SplashScreen>
                 return LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [
+                  colors: const [
                     Colors.white,
                     _gold,
                     Colors.white,
@@ -377,9 +386,10 @@ class _SplashScreenState extends State<SplashScreen>
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(3, (i) {
-            // Stagger each dot
-            final phase = ((_particleController.value * 3) - i).clamp(0.0, 1.0);
-            final opacity = (math.sin(phase * math.pi)).abs().clamp(0.3, 1.0);
+            final phase =
+                ((_particleController.value * 3) - i).clamp(0.0, 1.0);
+            final opacity =
+                (math.sin(phase * math.pi)).abs().clamp(0.3, 1.0);
             return Container(
               width: 7,
               height: 7,
