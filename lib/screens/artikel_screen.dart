@@ -1,120 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../database/database.dart';
+import '../models/artikel.dart';
+import '../models/simpan_artikel.dart';
+import '../utils/session_manager.dart';
 import 'article_detail_screen.dart';
 
 // ── Data Model ────────────────────────────────────────────────────────────────
-class ArtikelData {
-  final String id;
-  final String judul;
-  final String penulis;
-  final String tanggal;
-  final String kategori;
-  final String imageUrl;
-  final String excerpt;
-  final int menit;
-  final bool isLiked;
 
-  const ArtikelData({
-    required this.id,
-    required this.judul,
-    required this.penulis,
-    required this.tanggal,
-    required this.kategori,
-    required this.imageUrl,
-    required this.excerpt,
-    required this.menit,
-    this.isLiked = false,
-  });
-}
-
-const kArtikelList = [
-  ArtikelData(
-    id: '1',
-    judul: 'Ayam Betutu: Puncak Kelezatan Rempah dari Pulau Dewata',
-    penulis: 'Budi Santoso',
-    tanggal: '23 Mei 2024',
-    kategori: 'Sejarah Kuliner',
-    imageUrl:
-        'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=800&q=80',
-    excerpt:
-        'Hidangan legendaris Bali dengan bumbu rempah yang kaya dan meresap sempurna, menawarkan perpaduan rasa yang tak terlupakan.',
-    menit: 8,
-    isLiked: true,
-  ),
-  ArtikelData(
-    id: '2',
-    judul: 'Rendang: Warisan Kuliner Minangkabau yang Mendunia',
-    penulis: 'Sari Dewi',
-    tanggal: '20 Mei 2024',
-    kategori: 'Budaya & Tradisi',
-    imageUrl:
-        'https://images.unsplash.com/photo-1574653853027-5382a3d23a15?auto=format&fit=crop&w=800&q=80',
-    excerpt:
-        'Rendang bukan sekadar masakan—ia adalah simbol ketahanan budaya Minang yang telah diakui UNESCO sebagai Warisan Budaya Tak Benda.',
-    menit: 12,
-    isLiked: false,
-  ),
-  ArtikelData(
-    id: '3',
-    judul: 'Nasi Liwet Solo: Cita Rasa Kerajaan Mataram Islam',
-    penulis: 'Ahmad Rizky',
-    tanggal: '17 Mei 2024',
-    kategori: 'Sejarah Kuliner',
-    imageUrl:
-        'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80',
-    excerpt:
-        'Nasi liwet yang gurih dan aromatik ini konon berasal dari dapur Keraton Mataram, menjadi hidangan favorit para raja Jawa.',
-    menit: 6,
-    isLiked: false,
-  ),
-  ArtikelData(
-    id: '4',
-    judul: 'Pempek Palembang: Lebih dari Sekadar Gorengan',
-    penulis: 'Rina Lestari',
-    tanggal: '14 Mei 2024',
-    kategori: 'Jajanan Nusantara',
-    imageUrl:
-        'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80',
-    excerpt:
-        'Pempek telah menjadi ikon kuliner Sumatera Selatan selama berabad-abad. Cuko asam manisnya adalah jiwa dari hidangan rakyat ini.',
-    menit: 10,
-    isLiked: true,
-  ),
-  ArtikelData(
-    id: '5',
-    judul: 'Gudeg: Simfoni Rasa Manis dari Tanah Ngayogyakarta',
-    penulis: 'Dewi Kusuma',
-    tanggal: '11 Mei 2024',
-    kategori: 'Sejarah Kuliner',
-    imageUrl:
-        'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80',
-    excerpt:
-        'Nangka muda yang dimasak berjam-jam dalam santan dan gula merah ini bukan hanya makanan, melainkan cerminan filosofi hidup orang Jawa.',
-    menit: 7,
-    isLiked: false,
-  ),
-  ArtikelData(
-    id: '6',
-    judul: 'Soto Betawi: Kuah Santan Kental yang Menghangatkan Jiwa',
-    penulis: 'Fajar Nugraha',
-    tanggal: '8 Mei 2024',
-    kategori: 'Kuliner Kota',
-    imageUrl:
-        'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=400&q=80',
-    excerpt:
-        'Di balik kuah santan kental Soto Betawi tersimpan sejarah akulturasi budaya Betawi dengan pengaruh Arab, China, dan Belanda.',
-    menit: 9,
-    isLiked: false,
-  ),
-];
-
-const _kategoris = [
-  'Semua',
-  'Sejarah Kuliner',
-  'Budaya & Tradisi',
-  'Jajanan Nusantara',
-  'Kuliner Kota',
-];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 class ArtikelScreen extends StatefulWidget {
@@ -126,35 +20,13 @@ class ArtikelScreen extends StatefulWidget {
 
 class _ArtikelScreenState extends State<ArtikelScreen>
     with SingleTickerProviderStateMixin {
-  int _navIndex = 0;
-  String _selectedKategori = 'Semua';
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
 
   static const _brown = Color(0xFF4A2B20);
   static const _terracotta = Color(0xFFC6572F);
-  static const _gold = Color(0xFFD9AE23);
   static const _creamBg = Color(0xFFFDFAF7);
-
-  void _onNavTap(int index) {
-    if (index == _navIndex) return;
-    if (index == 0) {
-      Navigator.of(context).pushReplacementNamed('/');
-    } else if (index == 1) {
-      Navigator.of(context).pushReplacementNamed('/search');
-    } else if (index == 2) {
-      Navigator.of(context).pushReplacementNamed('/bookmark');
-    } else if (index == 3) {
-      Navigator.of(context).pushReplacementNamed('/profile');
-    }
-  }
-
-  List<ArtikelData> get _filteredArtikel {
-    if (_selectedKategori == 'Semua') return kArtikelList;
-    return kArtikelList
-        .where((a) => a.kategori == _selectedKategori)
-        .toList();
-  }
+  static const _heroBg = Color(0xFF772F1A);
 
   @override
   void initState() {
@@ -165,6 +37,30 @@ class _ArtikelScreenState extends State<ArtikelScreen>
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
+    _loadArtikel();
+  }
+
+  List<Artikel> _artikelList = [];
+  bool _isLoading = true;
+
+  Future<void> _loadArtikel() async {
+    setState(() => _isLoading = true);
+    try {
+      final db = Database();
+      final list = await db.getAllArtikel();
+      final idPengguna = SessionManager.instance.idPengguna;
+      if (idPengguna != null) {
+        final savedList = await db.getArtikelDisimpanByPengguna(idPengguna);
+        final savedIds = savedList.map((a) => a.idArtikel).toSet();
+        for (final a in list) {
+          a.isSaved = savedIds.contains(a.idArtikel);
+        }
+      }
+      if (mounted) setState(() { _artikelList = list; _isLoading = false; });
+    } catch (e) {
+      debugPrint('loadArtikel: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -177,181 +73,124 @@ class _ArtikelScreenState extends State<ArtikelScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _creamBg,
-      body: SafeArea(
-        child: Column(
+      body: Column(
           children: [
             _buildAppBar(),
-            _buildKategoriChips(),
             Expanded(
               child: FadeTransition(
                 opacity: _fadeAnim,
-                child: _buildArtikelList(),
+                child: RefreshIndicator(
+                  color: _terracotta,
+                  onRefresh: _loadArtikel,
+                  child: _buildArtikelList(),
+                ),
               ),
             ),
             KaryaRasaBottomNav(
-              currentIndex: _navIndex,
-              onTap: _onNavTap,
+              currentIndex: 3,
+              onTap: (index) {
+                if (index == 0) Navigator.of(context).pushReplacementNamed('/');
+                else if (index == 1) Navigator.of(context).pushReplacementNamed('/search');
+                else if (index == 2) Navigator.of(context).pushReplacementNamed('/bookmark');
+                else if (index == 4) Navigator.of(context).pushReplacementNamed('/profile');
+              },
             ),
           ],
         ),
-      ),
     );
   }
 
   // ── App Bar ─────────────────────────────────────────────────────────────────
   Widget _buildAppBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      decoration: BoxDecoration(
-        color: _creamBg,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Hero Header ─────────────────────────────────────────────────
+Container(
+  decoration: BoxDecoration(
+    color: _heroBg,
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.18),
+        blurRadius: 8,
+        offset: const Offset(0, 3),
       ),
+    ],
+  ),
+  child: SafeArea(
+    bottom: false,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.of(context).maybePop(),
+            onTap: () => Navigator.of(context).pop(),
             child: Container(
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: const Color(0xFFEEEEEE)),
+                color: Colors.white.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  size: 16, color: _brown),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white, size: 17),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Artikel Kuliner',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF2C1A10),
-                  ),
-                ),
-                Text(
-                  'Sejarah & Budaya Nusantara',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
+          Expanded(
+            child: Text(
+              'Artikel Kuliner',   // ← ganti: 'Simpan' / 'Jelajah' / 'Artikel Kuliner'
+              textAlign: TextAlign.center,
+              style: GoogleFonts.playfairDisplay(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 34),
+        ],
+      ),
+    ),
+  ),
+),
+        // ── Separator ─────────────────────────────────────────────────
+        Container(
+          height: 3,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                _terracotta.withValues(alpha: 0.7),
+                _brown.withValues(alpha: 0.4),
+                _terracotta.withValues(alpha: 0.7),
               ],
             ),
           ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFEEEEEE)),
-            ),
-            child: const Icon(Icons.search_rounded,
-                size: 20, color: _brown),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Kategori Filter Chips ───────────────────────────────────────────────────
-  Widget _buildKategoriChips() {
-    return SizedBox(
-      height: 52,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemCount: _kategoris.length,
-        itemBuilder: (_, i) {
-          final k = _kategoris[i];
-          final selected = k == _selectedKategori;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedKategori = k);
-              _fadeCtrl.reset();
-              _fadeCtrl.forward();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              decoration: BoxDecoration(
-                color: selected ? _terracotta : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color:
-                      selected ? _terracotta : const Color(0xFFDDDDDD),
-                ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: _terracotta.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Text(
-                k,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : Colors.grey[700],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+        ),
+      ],
     );
   }
 
   // ── Article List ────────────────────────────────────────────────────────────
   Widget _buildArtikelList() {
-    final list = _filteredArtikel;
-    if (list.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.article_outlined, size: 60, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            Text(
-              'Belum ada artikel',
-              style: TextStyle(color: Colors.grey[400], fontSize: 16),
-            ),
-          ],
-        ),
-      );
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: _terracotta));
     }
-
+    if (_artikelList.isEmpty) {
+      return const Center(child: Text('Belum ada artikel.'));
+    }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      itemCount: list.length,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _artikelList.length,
       itemBuilder: (context, index) {
-        final artikel = list[index];
-        // First article = featured card
-        if (index == 0 && _selectedKategori == 'Semua') {
+        final artikel = _artikelList[index];
+        if (index == 0) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: _FeaturedArtikelCard(
               artikel: artikel,
               onTap: () => _openArtikel(artikel),
+              onToggleSave: () => _toggleSave(artikel),
             ),
           );
         }
@@ -360,49 +199,63 @@ class _ArtikelScreenState extends State<ArtikelScreen>
           child: _ArtikelListCard(
             artikel: artikel,
             onTap: () => _openArtikel(artikel),
+            onToggleSave: () => _toggleSave(artikel),
           ),
         );
       },
     );
   }
 
-  void _openArtikel(ArtikelData artikel) {
+  void _openArtikel(Artikel artikel) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ArticleDetailScreen(artikel: artikel),
       ),
-    );
+    ).then((_) => _loadArtikel());
+  }
+
+  Future<void> _toggleSave(Artikel artikel) async {
+    final idPengguna = SessionManager.instance.idPengguna;
+    final idArtikel = artikel.idArtikel;
+    if (idPengguna == null || idArtikel == null) {
+      setState(() => artikel.isSaved = !artikel.isSaved);
+      return;
+    }
+    final db = Database();
+    if (artikel.isSaved) {
+      await db.hapusSimpanArtikel(idPengguna, idArtikel);
+    } else {
+      await db.simpanArtikel(SimpanArtikel(
+        idPengguna: idPengguna,
+        idArtikel: idArtikel,
+        tglDisimpan: DateTime.now().toIso8601String(),
+      ));
+    }
+    setState(() => artikel.isSaved = !artikel.isSaved);
   }
 }
 
 // ── Featured Article Card ─────────────────────────────────────────────────────
-class _FeaturedArtikelCard extends StatefulWidget {
-  final ArtikelData artikel;
+class _FeaturedArtikelCard extends StatelessWidget {
+  final Artikel artikel;
   final VoidCallback onTap;
-
-  const _FeaturedArtikelCard({required this.artikel, required this.onTap});
-
-  @override
-  State<_FeaturedArtikelCard> createState() => _FeaturedArtikelCardState();
-}
-
-class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
-  bool _liked = false;
+  final VoidCallback onToggleSave;
 
   static const _terracotta = Color(0xFFC6572F);
   static const _gold = Color(0xFFD9AE23);
   static const _brown = Color(0xFF4A2B20);
 
-  @override
-  void initState() {
-    super.initState();
-    _liked = widget.artikel.isLiked;
-  }
+  const _FeaturedArtikelCard({
+    required this.artikel,
+    required this.onTap,
+    required this.onToggleSave,
+  });
+  // (tidak berubah, tapi field di atas harus sudah Artikel)
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
@@ -423,7 +276,7 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
                 height: 260,
                 width: double.infinity,
                 child: Image.network(
-                  widget.artikel.imageUrl,
+                  artikel.fotoArtikel ?? '',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) =>
                       Container(color: _brown),
@@ -473,12 +326,12 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
                   ),
                 ),
               ),
-              // Like button
+              // Bookmark/Save button
               Positioned(
                 top: 14,
                 right: 14,
                 child: GestureDetector(
-                  onTap: () => setState(() => _liked = !_liked),
+                  onTap: onToggleSave,
                   child: Container(
                     width: 36,
                     height: 36,
@@ -487,11 +340,10 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      _liked
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color:
-                          _liked ? Colors.red : Colors.grey[400],
+                      artikel.isSaved
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
+                      color: artikel.isSaved ? _terracotta : Colors.grey[400],
                       size: 18,
                     ),
                   ),
@@ -513,7 +365,7 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        widget.artikel.kategori.toUpperCase(),
+                        artikel.kategori.toUpperCase(), // sama, tidak berubah
                         style: const TextStyle(
                           color: Color(0xFF2C1A10),
                           fontSize: 9,
@@ -524,7 +376,7 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      widget.artikel.judul,
+                      artikel.judulArtikel,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -541,7 +393,7 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
                             color: Colors.white70, size: 13),
                         const SizedBox(width: 4),
                         Text(
-                          widget.artikel.penulis,
+                          artikel.penulis,
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 11,
@@ -552,7 +404,7 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
                             color: Colors.white70, size: 13),
                         const SizedBox(width: 4),
                         Text(
-                          '${widget.artikel.menit} min baca',
+                          '${artikel.menitBaca} min baca',
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 11,
@@ -572,33 +424,24 @@ class _FeaturedArtikelCardState extends State<_FeaturedArtikelCard> {
 }
 
 // ── Article List Card ─────────────────────────────────────────────────────────
-class _ArtikelListCard extends StatefulWidget {
-  final ArtikelData artikel;
+class _ArtikelListCard extends StatelessWidget {
+  final Artikel artikel;
   final VoidCallback onTap;
-
-  const _ArtikelListCard({required this.artikel, required this.onTap});
-
-  @override
-  State<_ArtikelListCard> createState() => _ArtikelListCardState();
-}
-
-class _ArtikelListCardState extends State<_ArtikelListCard> {
-  bool _liked = false;
+  final VoidCallback onToggleSave;
 
   static const _brown = Color(0xFF4A2B20);
   static const _terracotta = Color(0xFFC6572F);
-  static const _gold = Color(0xFFD9AE23);
 
-  @override
-  void initState() {
-    super.initState();
-    _liked = widget.artikel.isLiked;
-  }
+  const _ArtikelListCard({
+    required this.artikel,
+    required this.onTap,
+    required this.onToggleSave,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -621,7 +464,7 @@ class _ArtikelListCardState extends State<_ArtikelListCard> {
                 width: 110,
                 height: 110,
                 child: Image.network(
-                  widget.artikel.imageUrl,
+                  artikel.fotoArtikel ?? '',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) =>
                       Container(color: _brown.withValues(alpha: 0.3)),
@@ -635,7 +478,7 @@ class _ArtikelListCardState extends State<_ArtikelListCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Category + Like
+                    // Category + Save button
                     Row(
                       children: [
                         Container(
@@ -646,7 +489,7 @@ class _ArtikelListCardState extends State<_ArtikelListCard> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            widget.artikel.kategori,
+                            artikel.kategori,
                             style: TextStyle(
                               color: _terracotta,
                               fontSize: 9,
@@ -656,20 +499,20 @@ class _ArtikelListCardState extends State<_ArtikelListCard> {
                         ),
                         const Spacer(),
                         GestureDetector(
-                          onTap: () => setState(() => _liked = !_liked),
+                          onTap: onToggleSave,
                           child: Icon(
-                            _liked
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            color: _liked ? Colors.red : Colors.grey[400],
-                            size: 18,
+                            artikel.isSaved
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_border_rounded,
+                            color: artikel.isSaved ? _terracotta : Colors.grey[400],
+                            size: 20,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      widget.artikel.judul,
+                      artikel.judulArtikel,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -687,7 +530,7 @@ class _ArtikelListCardState extends State<_ArtikelListCard> {
                         const SizedBox(width: 3),
                         Flexible(
                           child: Text(
-                            widget.artikel.penulis,
+                            artikel.penulis,
                             style: TextStyle(
                               fontSize: 10,
                               color: Colors.grey[500],
@@ -700,7 +543,7 @@ class _ArtikelListCardState extends State<_ArtikelListCard> {
                             size: 12, color: Colors.grey[500]),
                         const SizedBox(width: 3),
                         Text(
-                          '${widget.artikel.menit} min',
+                          '${artikel.menitBaca} min',
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.grey[500],

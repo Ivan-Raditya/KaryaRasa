@@ -1,8 +1,11 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/resep_data.dart';
+import '../utils/session_manager.dart';
+import '../database/database.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,400 +15,122 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _bgController;
-  late AnimationController _logoController;
-  late AnimationController _taglineController;
-  late AnimationController _particleController;
-  late AnimationController _shimmerController;
-
-  late Animation<double> _bgScale;
-  late Animation<double> _logoScale;
-  late Animation<double> _logoOpacity;
-  late Animation<double> _taglineOpacity;
-  late Animation<Offset> _taglineSlide;
-  late Animation<double> _dotOpacity;
-  late Animation<double> _shimmer;
-
-  static const _brown = Color(0xFF4A2B20);
-  static const _terracotta = Color(0xFFC6572F);
-  static const _gold = Color(0xFFD9AE23);
-  static const _darkBrown = Color(0xFF2C1A10);
+    with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeIn;
 
   @override
   void initState() {
     super.initState();
-
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    _bgController = AnimationController(
+    _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3500),
+      duration: const Duration(milliseconds: 800),
     );
-    _bgScale = Tween<double>(begin: 1.0, end: 1.12).animate(
-      CurvedAnimation(parent: _bgController, curve: Curves.easeInOut),
-    );
+    _fadeIn = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
+    _fadeController.forward();
 
-    _logoController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _logoScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
-    );
-    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-      ),
-    );
-
-    _taglineController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _taglineOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _taglineController, curve: Curves.easeOut),
-    );
-    _taglineSlide = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _taglineController, curve: Curves.easeOut),
-    );
-
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    );
-    _shimmer = Tween<double>(begin: -1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
-    );
-
-    _particleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
-    _dotOpacity = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _particleController, curve: Curves.easeInOut),
-    );
-
-    _startAnimationSequence();
+    _start();
   }
 
-  Future<void> _startAnimationSequence() async {
-    _bgController.forward();
+  Future<void> _start() async {
+    // Load resep di background
+    loadResepFromDatabase().catchError((e) => debugPrint('loadResep: $e'));
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    await _logoController.forward();
+    await Future.delayed(const Duration(milliseconds: 2000));
+    if (!mounted) return;
 
-    await Future.delayed(const Duration(milliseconds: 200));
-    _taglineController.forward();
-    _shimmerController.repeat();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-    // Load resep di background — tidak ditunggu
-    // Data akan siap saat user selesai login dan masuk home
-    // Load resep di background — error diabaikan, tidak memblokir splash
-loadResepFromDatabase().catchError((e) {
-  debugPrint('loadResep error: $e');
-}).then((_) {
-  debugPrint('loadResep selesai: ${kResepList.length} resep');
-});
-    // Tunggu animasi selesai saja
-    await Future.delayed(const Duration(milliseconds: 2400));
+    // Cek apakah user sudah login via Supabase session
+    final supabaseUser = Supabase.instance.client.auth.currentUser;
+    if (supabaseUser != null && !SessionManager.instance.sudahLogin) {
+      try {
+        final db = Database();
+        final pengguna = await db.getPenggunaByEmail(supabaseUser.email ?? '');
+        if (pengguna != null) {
+          SessionManager.instance.login(pengguna);
+        }
+      } catch (_) {}
+    }
 
-    if (mounted) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (!mounted) return;
+
+    if (SessionManager.instance.sudahLogin) {
+      Navigator.of(context).pushReplacementNamed('/');
+    } else {
       Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 
   @override
   void dispose() {
-    _bgController.dispose();
-    _logoController.dispose();
-    _taglineController.dispose();
-    _particleController.dispose();
-    _shimmerController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _darkBrown,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ── Animated Background ──────────────────────────────────────
-          AnimatedBuilder(
-            animation: _bgScale,
-            builder: (_, child) => Transform.scale(
-              scale: _bgScale.value,
-              child: child,
+      backgroundColor: Colors.black,
+      body: FadeTransition(
+        opacity: _fadeIn,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background image makanan (asset lokal, opacity 55%)
+            Opacity(
+              opacity: 0.55,
+              child: Image.asset(
+                'assets/images/Splash Screen.jpg',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(color: Colors.black),
+              ),
             ),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: _brown),
-            ),
-          ),
 
-          // ── Layered Gradient Overlay ─────────────────────────────────
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  _darkBrown.withValues(alpha: 0.55),
-                  _darkBrown.withValues(alpha: 0.80),
-                  _darkBrown.withValues(alpha: 0.97),
+            // Gradient overlay bawah agar teks terbaca
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black54],
+                  stops: [0.5, 1.0],
+                ),
+              ),
+            ),
+
+            // Branding tengah layar
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                     Text(
+                    'KaryaRasa',
+                    style: GoogleFonts.playfairDisplay(
+                      color: Colors.white,
+                      fontSize: 38,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                   SizedBox(height: 8),
+                  Text(
+                    'Rasa Warisan Budaya',
+                    style: GoogleFonts.playfairDisplay(
+                      color: Colors.white.withValues(alpha: 0.80),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
                 ],
-                stops: const [0.0, 0.5, 1.0],
               ),
             ),
-          ),
-
-          // ── Decorative Spice Pattern ─────────────────────────────────
-          Positioned(
-            top: -40,
-            right: -40,
-            child: Opacity(
-              opacity: 0.08,
-              child: Icon(Icons.spa_rounded, size: 220, color: _gold),
-            ),
-          ),
-          Positioned(
-            bottom: 120,
-            left: -30,
-            child: Opacity(
-              opacity: 0.06,
-              child: Icon(Icons.eco_rounded, size: 180, color: _gold),
-            ),
-          ),
-
-          // ── Floating Particles ───────────────────────────────────────
-          ..._buildParticles(),
-
-          // ── Main Content ─────────────────────────────────────────────
-          SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(flex: 2),
-
-                AnimatedBuilder(
-                  animation: _logoController,
-                  builder: (_, child) => Transform.scale(
-                    scale: _logoScale.value,
-                    child: Opacity(
-                      opacity: _logoOpacity.value,
-                      child: child,
-                    ),
-                  ),
-                  child: _buildLogoPlate(),
-                ),
-
-                const SizedBox(height: 28),
-
-                SlideTransition(
-                  position: _taglineSlide,
-                  child: FadeTransition(
-                    opacity: _taglineOpacity,
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _goldDot(),
-                            Container(
-                              width: 60,
-                              height: 1,
-                              color: _gold.withValues(alpha: 0.5),
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
-                            ),
-                            _goldDot(),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'Rasa Warisan Budaya',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 40),
-                          child: Text(
-                            'Jelajahi kekayaan kuliner Nusantara\ndari Sabang sampai Merauke',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13,
-                              height: 1.6,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const Spacer(flex: 3),
-
-                FadeTransition(
-                  opacity: _taglineOpacity,
-                  child: _buildLoadingDots(),
-                ),
-
-                const SizedBox(height: 40),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
-  }
-
-  Widget _buildLogoPlate() {
-    return Column(
-      children: [
-        Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: _gold.withValues(alpha: 0.35), width: 2),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _terracotta.withValues(alpha: 0.25),
-                    _brown.withValues(alpha: 0.10),
-                  ],
-                ),
-                border: Border.all(
-                    color: _gold.withValues(alpha: 0.6), width: 1.5),
-              ),
-              child: const Icon(
-                Icons.restaurant_rounded,
-                color: _gold,
-                size: 46,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        AnimatedBuilder(
-          animation: _shimmer,
-          builder: (_, child) {
-            return ShaderMask(
-              shaderCallback: (bounds) {
-                return LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: const [Colors.white, _gold, Colors.white],
-                  stops: [
-                    (_shimmer.value - 0.5).clamp(0.0, 1.0),
-                    _shimmer.value.clamp(0.0, 1.0),
-                    (_shimmer.value + 0.5).clamp(0.0, 1.0),
-                  ],
-                ).createShader(bounds);
-              },
-              child: child!,
-            );
-          },
-          child: const Text(
-            'KaryaRasa',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 44,
-              fontWeight: FontWeight.w700,
-              fontStyle: FontStyle.italic,
-              letterSpacing: 2,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _goldDot() {
-    return Container(
-      width: 5,
-      height: 5,
-      decoration: const BoxDecoration(
-        color: _gold,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-
-  Widget _buildLoadingDots() {
-    return AnimatedBuilder(
-      animation: _particleController,
-      builder: (_, __) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (i) {
-            final phase =
-                ((_particleController.value * 3) - i).clamp(0.0, 1.0);
-            final opacity =
-                (math.sin(phase * math.pi)).abs().clamp(0.3, 1.0);
-            return Container(
-              width: 7,
-              height: 7,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: _terracotta.withValues(alpha: opacity),
-                shape: BoxShape.circle,
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-
-  List<Widget> _buildParticles() {
-    final rng = math.Random(42);
-    return List.generate(12, (i) {
-      final dx = rng.nextDouble();
-      final dy = rng.nextDouble();
-      final size = 3.0 + rng.nextDouble() * 4;
-      return AnimatedBuilder(
-        animation: _particleController,
-        builder: (context, _) {
-          final t = (_particleController.value + i * 0.083) % 1.0;
-          final opacity = (math.sin(t * math.pi)).abs() * 0.25;
-          return Positioned(
-            left: dx * MediaQuery.of(context).size.width,
-            top: dy * MediaQuery.of(context).size.height,
-            child: Opacity(
-              opacity: opacity,
-              child: Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  color: i.isEven ? _gold : _terracotta,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    });
   }
 }

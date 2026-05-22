@@ -62,9 +62,9 @@ class ProfileScreen extends StatelessWidget {
                             'Profil',
                             style: TextStyle(
                               color: _gold,
-                              fontSize: 16,
+                              fontSize: 24,
                               fontWeight: FontWeight.w700,
-                              fontStyle: FontStyle.italic,
+                              fontFamily: 'PlayfairDisplay',
                             ),
                           ),
                         ),
@@ -209,7 +209,7 @@ class ProfileScreen extends StatelessWidget {
 
           // ── Bottom Nav ─────────────────────────────────────────────────
           KaryaRasaBottomNav(
-            currentIndex: 3,
+            currentIndex: 4,
             onTap: (index) {
               if (index == 0) {
                 Navigator.of(context).pushReplacementNamed('/');
@@ -217,6 +217,8 @@ class ProfileScreen extends StatelessWidget {
                 Navigator.of(context).pushNamed('/search');
               } else if (index == 2) {
                 Navigator.of(context).pushNamed('/bookmark');
+              } else if (index == 3) {
+                Navigator.of(context).pushReplacementNamed('/artikel');
               }
             },
           ),

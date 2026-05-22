@@ -52,7 +52,17 @@ class Database {
     return Pengguna.fromMap(result);
   }
 
-  Future<bool> isEmailTerdaftar(String email) async {
+  Future<Pengguna?> getPenggunaByEmail(String email) async {
+    final result = await supabase
+        .from('pengguna')
+        .select()
+        .eq('email', email)
+        .maybeSingle();
+    if (result == null) return null;
+    return Pengguna.fromMap(result);
+  }
+
+    Future<bool> isEmailTerdaftar(String email) async {
     final result = await supabase
         .from('pengguna')
         .select('idPengguna')

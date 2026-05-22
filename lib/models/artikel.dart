@@ -1,10 +1,15 @@
 class Artikel {
   final int? idArtikel;
-  final int? idResep; // FK ke ResepMakanan (opsional)
+  final int? idResep;
   final String judulArtikel;
   final String isiArtikel;
   final String? fotoArtikel;
   final String tglDibuat;
+  final String penulis;
+  final String kategori;
+  final String excerpt;
+  final int menitBaca;
+  bool isSaved;
 
   Artikel({
     this.idArtikel,
@@ -13,6 +18,11 @@ class Artikel {
     required this.isiArtikel,
     this.fotoArtikel,
     required this.tglDibuat,
+    required this.penulis,
+    required this.kategori,
+    required this.excerpt,
+    required this.menitBaca,
+    this.isSaved = false,
   });
 
   factory Artikel.fromMap(Map<String, dynamic> map) {
@@ -23,6 +33,10 @@ class Artikel {
       isiArtikel: map['isiArtikel'] as String,
       fotoArtikel: map['fotoArtikel'] as String?,
       tglDibuat: map['tglDibuat'] as String,
+      penulis: map['penulis'] as String? ?? '',
+      kategori: map['kategori'] as String? ?? '',
+      excerpt: map['excerpt'] as String? ?? '',
+      menitBaca: map['menitBaca'] as int? ?? 0,
     );
   }
 
@@ -34,6 +48,10 @@ class Artikel {
       'isiArtikel': isiArtikel,
       'fotoArtikel': fotoArtikel,
       'tglDibuat': tglDibuat,
+      'penulis': penulis,
+      'kategori': kategori,
+      'excerpt': excerpt,
+      'menitBaca': menitBaca,
     };
   }
 }

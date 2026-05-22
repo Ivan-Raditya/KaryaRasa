@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../data/resep_data.dart';
 import '../database/database.dart';
@@ -8,7 +9,14 @@ import '../utils/session_manager.dart';
 import 'resep_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String? initialCategory;
+  final String? initialSearchQuery;
+
+  const SearchScreen({
+    super.key,
+    this.initialCategory,
+    this.initialSearchQuery,
+  });
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -19,10 +27,23 @@ class _SearchScreenState extends State<SearchScreen> {
   String _activeCategory = 'Semua';
   String _searchQuery = '';
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialCategory != null) {
+      _activeCategory = widget.initialCategory!;
+    }
+    if (widget.initialSearchQuery != null) {
+      _searchQuery = widget.initialSearchQuery!;
+      _searchController.text = widget.initialSearchQuery!;
+    }
+  }
+
   static const _brown = Color(0xFF4A2B20);
   static const _terracotta = Color(0xFFC6572F);
   static const _gold = Color(0xFFD9AE23);
   static const _creamBg = Color(0xFFFDFAF6);
+  static const _heroBg = Color(0xFF772F1A);
 
   // Kategori disesuaikan dengan nilai kategoriResep di DB
   final List<String> _categories = [
@@ -86,73 +107,101 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _creamBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ─────────────────────────────────────────────────────
+      body: Column(
+        children: [
+            // ── Hero Header ──────────────────────────────────────────────
+            // ── Hero Header ─────────────────────────────────────────────────
+Container(
+  decoration: BoxDecoration(
+    color: _heroBg,
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.18),
+        blurRadius: 8,
+        offset: const Offset(0, 3),
+      ),
+    ],
+  ),
+  child: SafeArea(
+    bottom: false,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white, size: 17),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Jelajah',   // ← ganti: 'Simpan' / 'Jelajah' / 'Artikel Kuliner'
+              textAlign: TextAlign.center,
+              style: GoogleFonts.playfairDisplay(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 34),
+        ],
+      ),
+    ),
+  ),
+),
+            // ── Separator ───────────────────────────────────────────────
+            Container(
+              height: 3,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    _terracotta.withValues(alpha: 0.7),
+                    _brown.withValues(alpha: 0.4),
+                    _terracotta.withValues(alpha: 0.7),
+                  ],
+                ),
+              ),
+            ),
+            // ── Search Bar ───────────────────────────────────────────────
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0EDE8),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.arrow_back_rounded, color: _brown, size: 18),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Jelajah',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2C1A10),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0EDE8),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _searchQuery = v),
+                  style: const TextStyle(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Cari resep, bahan, atau daerah...',
+                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  const SizedBox(height: 14),
-                  // Search bar
-                  Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0EDE8),
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        hintText: 'Cari resep, bahan, atau daerah...',
-                        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
-                        prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
 
@@ -194,10 +243,20 @@ class _SearchScreenState extends State<SearchScreen> {
 
             // ── Results ─────────────────────────────────────────────────────
             Expanded(
-              child: _filteredRecipes.isEmpty
-                  ? _buildEmpty()
-                  : CustomScrollView(
-                      slivers: [
+              child: RefreshIndicator(
+                color: _terracotta,
+                onRefresh: () async {
+                  await loadResepFromDatabase();
+                  if (mounted) setState(() {});
+                },
+                child: _filteredRecipes.isEmpty
+                    ? Stack(children: [
+                        ListView(), // agar RefreshIndicator bisa ditarik saat kosong
+                        _buildEmpty(),
+                      ])
+                    : CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
                         SliverPadding(
                           padding: const EdgeInsets.all(16),
                           sliver: SliverToBoxAdapter(
@@ -230,6 +289,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     ),
+              ),  // closes RefreshIndicator
             ),
 
             // ── Bottom Nav ──────────────────────────────────────────────────
@@ -241,13 +301,14 @@ class _SearchScreenState extends State<SearchScreen> {
                 } else if (index == 2) {
                   Navigator.of(context).pushReplacementNamed('/bookmark');
                 } else if (index == 3) {
+                  Navigator.of(context).pushReplacementNamed('/artikel');
+                } else if (index == 4) {
                   Navigator.of(context).pushNamed('/profile');
                 }
               },
             ),
           ],
         ),
-      ),
     );
   }
 

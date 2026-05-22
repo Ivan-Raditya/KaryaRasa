@@ -33,7 +33,8 @@ class KaryaRasaBottomNav extends StatelessWidget {
               _NavItem(icon: Icons.home_rounded, label: 'Beranda', active: currentIndex == 0, onTap: () => onTap(0)),
               _NavItem(icon: Icons.explore_rounded, label: 'Jelajah', active: currentIndex == 1, onTap: () => onTap(1)),
               _NavItem(icon: Icons.bookmark_border_rounded, label: 'Simpan', active: currentIndex == 2, activeIcon: Icons.bookmark_rounded, onTap: () => onTap(2)),
-              _NavItem(icon: Icons.person_outline_rounded, label: 'Profil', active: currentIndex == 3, activeIcon: Icons.person_rounded, onTap: () => onTap(3)),
+              _NavItem(icon: Icons.article_outlined, label: 'Artikel', active: currentIndex == 3, activeIcon: Icons.article_rounded, onTap: () => onTap(3)),
+              _NavItem(icon: Icons.person_outline_rounded, label: 'Profil', active: currentIndex == 4, activeIcon: Icons.person_rounded, onTap: () => onTap(4)),
             ],
           ),
         ),
@@ -67,16 +68,16 @@ class _NavItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 72,
+        width: 64,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(active ? (activeIcon ?? icon) : icon, color: color, size: 26),
+            Icon(active ? (activeIcon ?? icon) : icon, color: color, size: 24),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                 color: color,
               ),

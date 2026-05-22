@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../data/resep_data.dart';
+import '../utils/session_manager.dart';
 import 'resep_detail_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +21,20 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _olive = Color(0xFF91A365);
   static const _gold = Color(0xFFD9AE23);
   static const _creamBg = Color(0xFFFDFAF7);
+  static const _heroBg = Color(0xFF772F1A);
+
+  @override
+  void initState() {
+    super.initState();
+    _syncBookmarks();
+  }
+
+  Future<void> _syncBookmarks() async {
+    final idPengguna = SessionManager.instance.idPengguna;
+    if (idPengguna == null) return;
+    await syncBookmarkState(idPengguna);
+    if (mounted) setState(() {});
+  }
 
   void _onNavTap(int index) {
     if (index == _navIndex) return;
@@ -26,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (index == 2) {
       Navigator.of(context).pushNamed('/bookmark');
     } else if (index == 3) {
+      Navigator.of(context).pushNamed('/artikel');
+    } else if (index == 4) {
       Navigator.of(context).pushNamed('/profile');
     } else {
       setState(() => _navIndex = index);
@@ -41,22 +60,30 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildAppBar(),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeroBanner(),
-                    const SizedBox(height: 20),
-                    _buildWarisanAndDaerah(),
-                    const SizedBox(height: 20),
-                    _buildRekomendasi(),
-                    const SizedBox(height: 20),
-                    _buildBelajarSejarah(),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
+              child: RefreshIndicator(
+                color: _terracotta,
+                onRefresh: () async {
+                  await loadResepFromDatabase();
+                  await _syncBookmarks();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeroBanner(),
+                      const SizedBox(height: 20),
+                      _buildWarisanAndDaerah(),
+                      const SizedBox(height: 20),
+                      _buildRekomendasi(),
+                      const SizedBox(height: 20),
+                      _buildBelajarSejarah(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),  // closes Column
+                ),  // closes SingleChildScrollView
+              ),  // closes RefreshIndicator
+            ),  // closes Expanded
             KaryaRasaBottomNav(currentIndex: _navIndex, onTap: _onNavTap),
           ],
         ),
@@ -68,61 +95,29 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildAppBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          // Logo
-          const Text(
-            'KaryaRasa',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF2C1A10),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Search bar
-          Expanded(
-            child: Container(
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0EDE8),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 10),
-                  const Icon(Icons.search_rounded, color: Colors.grey, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Cari resep...',
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Avatar
-          GestureDetector(
-            onTap: () => Navigator.of(context).pushNamed('/profile'),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFFEEC170).withValues(alpha: 0.5),
-              child: const Icon(Icons.person_rounded, color: _brown, size: 22),
-            ),
-          ),
-        ],
+      child: Text(
+        'KaryaRasa',
+        style: GoogleFonts.playfairDisplay(
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          color: const Color(0xFF2C1A10),
+        ),
       ),
     );
   }
 
   // ── Hero Banner ──────────────────────────────────────────────────────────
   Widget _buildHeroBanner() {
-    return Padding(
+  final resepHariIni = kResepList.isNotEmpty ? kResepList.first : null;
+  return GestureDetector(
+    onTap: resepHariIni == null ? null : () {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ResepDetailScreen(resep: resepHariIni),
+        ),
+      );
+    },
+    child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
@@ -131,12 +126,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Background food image
-              Image.network(
-                'https://images.unsplash.com/photo-1574653853027-5382a3d23a15?auto=format&fit=crop&w=800&q=80',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: _brown),
-              ),
+              // Background — gambar pertama dari resep hari ini
+              if (resepHariIni != null && resepHariIni.imageUrls.isNotEmpty)
+                Image.network(
+                  resepHariIni.imageUrls.first,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: _brown),
+                )
+              else
+                Container(color: _brown),
               // Dark gradient overlay
               Container(
                 decoration: BoxDecoration(
@@ -150,22 +149,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              // Thumbnail stack on right
-              Positioned(
-                right: 10,
-                top: 10,
-                child: Column(
-                  children: [
-                    _miniThumb(
-                      'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=200&q=80',
-                    ),
-                    const SizedBox(height: 6),
-                    _miniThumb(
-                      'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=200&q=80',
-                    ),
-                  ],
+              // Thumbnail stack on right — gambar ke-2 dan ke-3 dari resep
+              if (resepHariIni != null && resepHariIni.imageUrls.length > 1)
+                Positioned(
+                  right: 10,
+                  top: 10,
+                  child: Column(
+                    children: [
+                      _miniThumb(resepHariIni.imageUrls[1]),
+                      if (resepHariIni.imageUrls.length > 2) ...[
+                        const SizedBox(height: 6),
+                        _miniThumb(resepHariIni.imageUrls[2]),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
               // Text content
               Positioned(
                 left: 16,
@@ -206,10 +204,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         const Icon(Icons.circle, color: _terracotta, size: 6),
                         const SizedBox(width: 5),
-                        const Flexible(
+                        Flexible(
                           child: Text(
-                            'Resep Hari Ini: Rendang Minang (Sumatera Barat)',
-                            style: TextStyle(
+                            kResepList.isNotEmpty
+  ? 'Resep Hari Ini: ${kResepList.first.nama} (${kResepList.first.daerah})'
+  : 'Resep Hari Ini: -',
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 10,
                             ),
@@ -224,7 +224,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _miniThumb(String url) {
@@ -269,6 +270,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Makanan',
                   _brown,
                   Colors.white,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const SearchScreen(initialCategory: 'Makanan'),
+                  )),
                 ),
                 const SizedBox(height: 8),
                 _warisanPill(
@@ -276,6 +280,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Jajanan',
                   _olive,
                   Colors.white,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const SearchScreen(initialCategory: 'Snack'),
+                  )),
                 ),
                 const SizedBox(height: 8),
                 _warisanPill(
@@ -283,6 +290,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Minuman',
                   const Color(0xFFEDE8DF),
                   _brown,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const SearchScreen(initialCategory: 'Minuman'),
+                  )),
                 ),
               ],
             ),
@@ -312,15 +322,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _warisanPill(String imgUrl, String label, Color bgColor, Color textColor) {
-    return Container(
+  Widget _warisanPill(String imgUrl, String label, Color bgColor, Color textColor, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           ClipOval(
             child: SizedBox(
@@ -347,6 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -366,7 +380,14 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisSpacing: 8,
       childAspectRatio: 1.1,
       children: items.map((item) {
-        return Container(
+        final label = item['label'] as String;
+        // Ubah label (uppercase) ke query daerah yang cocok dengan data
+        final daerahQuery = label[0] + label.substring(1).toLowerCase(); // "JAWA" → "Jawa"
+        return GestureDetector(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SearchScreen(initialSearchQuery: daerahQuery),
+          )),
+          child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
@@ -389,6 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+        ),
         );
       }).toList(),
     );
@@ -438,7 +460,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   5,
                   120, // dummy review count
                   resep: resep,
-                  liked: resep.isBookmarked,
                 ),
               );
             }).toList(),
@@ -467,7 +488,6 @@ class _HomeScreenState extends State<HomeScreen> {
     String imgUrl,
     int stars,
     int reviewCount, {
-    bool liked = false,
     required ResepData resep,
   }) {
     return GestureDetector(
@@ -509,23 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                    color: liked ? Colors.red : Colors.grey,
-                    size: 16,
-                  ),
-                ),
-              ),
+
             ],
           ),
           Padding(

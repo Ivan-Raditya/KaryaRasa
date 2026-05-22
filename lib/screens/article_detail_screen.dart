@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'artikel_screen.dart' show ArtikelData, kArtikelList;
+import '../models/artikel.dart';
+import '../database/database.dart';
+import '../models/simpan_artikel.dart';
+import '../utils/session_manager.dart';
 
-/// Full-page article detail — mirrors the Figma screenshot exactly
 class ArticleDetailScreen extends StatefulWidget {
-  final ArtikelData artikel;
+  final Artikel artikel;
 
   const ArticleDetailScreen({super.key, required this.artikel});
 
@@ -13,8 +15,7 @@ class ArticleDetailScreen extends StatefulWidget {
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     with SingleTickerProviderStateMixin {
-  bool _liked = false;
-  bool _bookmarked = false;
+  bool _saved = false;
   late AnimationController _heroCtrl;
   late Animation<double> _heroFade;
 
@@ -24,16 +25,27 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   static const _creamBg = Color(0xFFFDFAF7);
   static const _darkBrown = Color(0xFF2C1A10);
 
-  // Related articles (excluding current)
-  List<ArtikelData> get _related => kArtikelList
-      .where((a) => a.id != widget.artikel.id)
-      .take(3)
-      .toList();
+  List<Artikel> _related = [];
+
+  Future<void> _loadRelated() async {
+    try {
+      final all = await Database().getAllArtikel();
+      if (mounted) {
+        setState(() {
+          _related = all
+              .where((a) => a.idArtikel != widget.artikel.idArtikel)
+              .take(3)
+              .toList();
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void initState() {
     super.initState();
-    _liked = widget.artikel.isLiked;
+    _saved = widget.artikel.isSaved;
+    _loadRelated();
     _heroCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -46,6 +58,29 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   void dispose() {
     _heroCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleSave() async {
+    final idPengguna = SessionManager.instance.idPengguna;
+    final idArtikel = widget.artikel.idArtikel;
+    if (idPengguna == null || idArtikel == null) {
+      setState(() => _saved = !_saved);
+      return;
+    }
+    final db = Database();
+    if (_saved) {
+      await db.hapusSimpanArtikel(idPengguna, idArtikel);
+    } else {
+      await db.simpanArtikel(SimpanArtikel(
+        idPengguna: idPengguna,
+        idArtikel: idArtikel,
+        tglDisimpan: DateTime.now().toIso8601String(),
+      ));
+    }
+    setState(() {
+      _saved = !_saved;
+      widget.artikel.isSaved = _saved;
+    });
   }
 
   @override
@@ -75,14 +110,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
               ),
             ],
           ),
-          // Floating action row at bottom
           _buildFloatingActions(),
         ],
       ),
     );
   }
 
-  // ── Sliver App Bar with Hero Image ─────────────────────────────────────────
+  // ── Sliver App Bar ──────────────────────────────────────────────────────────
   Widget _buildSliverAppBar() {
     return SliverAppBar(
       expandedHeight: 280,
@@ -102,7 +136,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       ),
       actions: [
         GestureDetector(
-          onTap: () => setState(() => _bookmarked = !_bookmarked),
+          onTap: _toggleSave,
           child: Container(
             margin: const EdgeInsets.all(8),
             width: 36,
@@ -112,16 +146,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
               shape: BoxShape.circle,
             ),
             child: Icon(
-              _bookmarked
+              _saved
                   ? Icons.bookmark_rounded
                   : Icons.bookmark_border_rounded,
-              color: _bookmarked ? _terracotta : _brown,
+              color: _saved ? _terracotta : _brown,
               size: 18,
             ),
           ),
         ),
       ],
-      title: Text(
+      title: const Text(
         'KARYARASA',
         style: TextStyle(
           color: _brown,
@@ -135,39 +169,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       flexibleSpace: FlexibleSpaceBar(
         background: FadeTransition(
           opacity: _heroFade,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(
-                widget.artikel.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(color: _brown),
-              ),
-              // Like button overlay
-              Positioned(
-                bottom: 16,
-                right: 16,
-                child: GestureDetector(
-                  onTap: () => setState(() => _liked = !_liked),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _liked
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: _liked ? Colors.red : Colors.grey,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: Image.network(
+            widget.artikel.fotoArtikel ?? '',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(color: _brown),
           ),
         ),
       ),
@@ -181,33 +186,23 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Metadata row
           Row(
             children: [
               Text(
                 'OLEH ${widget.artikel.penulis.toUpperCase()}',
-                style: TextStyle(
+                style: const TextStyle(
                   color: _terracotta,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
                 ),
               ),
-              const Text(
-                '  •  ',
-                style: TextStyle(color: Colors.grey),
-              ),
+              const Text('  •  ', style: TextStyle(color: Colors.grey)),
               Text(
-                widget.artikel.tanggal,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 10,
-                ),
+                widget.artikel.tglDibuat,
+                style: TextStyle(color: Colors.grey[500], fontSize: 10),
               ),
-              const Text(
-                '  •  ',
-                style: TextStyle(color: Colors.grey),
-              ),
+              const Text('  •  ', style: TextStyle(color: Colors.grey)),
               Text(
                 widget.artikel.kategori.toUpperCase(),
                 style: TextStyle(
@@ -219,9 +214,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             ],
           ),
           const SizedBox(height: 12),
-          // Title
           Text(
-            widget.artikel.judul,
+            widget.artikel.judulArtikel,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,
@@ -230,7 +224,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             ),
           ),
           const SizedBox(height: 16),
-          // Reading time chip
           Row(
             children: [
               Container(
@@ -247,7 +240,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                         size: 13, color: _brown),
                     const SizedBox(width: 4),
                     Text(
-                      '${widget.artikel.menit} min baca',
+                      '${widget.artikel.menitBaca} min baca',
                       style: const TextStyle(
                           fontSize: 11,
                           color: _brown,
@@ -288,7 +281,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     );
   }
 
-  // ── Opening Quote / Excerpt ─────────────────────────────────────────────────
+  // ── Opening Quote ───────────────────────────────────────────────────────────
   Widget _buildOpeningQuote() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -363,7 +356,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     );
   }
 
-  // ── Inline Image + Text Side-by-Side ───────────────────────────────────────
+  // ── Inline Image ────────────────────────────────────────────────────────────
   Widget _buildInlineImageSection() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
@@ -412,12 +405,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           color: _brown,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
+        child: const Column(
           children: [
-            const Icon(Icons.format_quote_rounded,
-                color: _gold, size: 32),
-            const SizedBox(height: 8),
-            const Text(
+            Icon(Icons.format_quote_rounded, color: _gold, size: 32),
+            SizedBox(height: 8),
+            Text(
               '"Ayam Betutu adalah simfoni rasa, perwujudan sejati dari kekayaan bumbu \'base genep\' yang tak tertandingi."',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -437,24 +429,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   Widget _buildBodyText() {
     return const Padding(
       padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Secara tradisional, proses pemanggangan dilakukan di dalam sekam padi panas, menciptakan aroma smoky yang khas yang tidak bisa didapatkan dari teknik modern. Setelah diungkep, ayam dipijat perlahan agar bumbu meresap hingga ke tulang sebelum dimasak berjam-jam.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF555555),
-              height: 1.75,
-            ),
-          ),
-          SizedBox(height: 16),
-        ],
+      child: Text(
+        'Secara tradisional, proses pemanggangan dilakukan di dalam sekam padi panas, menciptakan aroma smoky yang khas yang tidak bisa didapatkan dari teknik modern. Setelah diungkep, ayam dipijat perlahan agar bumbu meresap hingga ke tulang sebelum dimasak berjam-jam.',
+        style: TextStyle(
+          fontSize: 14,
+          color: Color(0xFF555555),
+          height: 1.75,
+        ),
       ),
     );
   }
 
-  // ── Callout Box ─────────────────────────────────────────────────────────────
+  // ── Callout ─────────────────────────────────────────────────────────────────
   Widget _buildCallout() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -518,8 +504,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                   onTap: () {
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            ArticleDetailScreen(artikel: rel),
+                        builder: (_) => ArticleDetailScreen(artikel: rel),
                       ),
                     );
                   },
@@ -534,18 +519,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                             height: 110,
                             width: 150,
                             child: Image.network(
-                              rel.imageUrl,
+                             rel.fotoArtikel ?? '',
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) =>
-                                  Container(
-                                color: _brown.withValues(alpha: 0.3),
-                              ),
+                                  Container(color: _brown.withValues(alpha: 0.3)),
                             ),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          rel.judul,
+                          rel.judulArtikel,
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -562,7 +545,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                 size: 11, color: Colors.grey[400]),
                             const SizedBox(width: 3),
                             Text(
-                              '± ${rel.menit} min',
+                             '± ${rel.menitBaca} min',
                               style: TextStyle(
                                 fontSize: 10,
                                 color: Colors.grey[400],
@@ -602,21 +585,21 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         ),
         child: Row(
           children: [
-            // Like
+            // Simpan
             GestureDetector(
-              onTap: () => setState(() => _liked = !_liked),
+              onTap: _toggleSave,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: _liked
-                      ? Colors.red.withValues(alpha: 0.1)
+                  color: _saved
+                      ? _terracotta.withValues(alpha: 0.1)
                       : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _liked
-                        ? Colors.red.withValues(alpha: 0.3)
+                    color: _saved
+                        ? _terracotta.withValues(alpha: 0.3)
                         : const Color(0xFFEEEEEE),
                   ),
                 ),
@@ -624,19 +607,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      _liked
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: _liked ? Colors.red : Colors.grey,
+                      _saved
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
+                      color: _saved ? _terracotta : Colors.grey,
                       size: 18,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      _liked ? 'Disukai' : 'Suka',
+                      _saved ? 'Tersimpan' : 'Simpan',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _liked ? Colors.red : Colors.grey,
+                        color: _saved ? _terracotta : Colors.grey,
                       ),
                     ),
                   ],
@@ -644,7 +627,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
               ),
             ),
             const SizedBox(width: 10),
-            // Share
+            // Bagikan
             Expanded(
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -655,8 +638,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.share_rounded,
-                        color: Colors.white, size: 18),
+                    Icon(Icons.share_rounded, color: Colors.white, size: 18),
                     SizedBox(width: 8),
                     Text(
                       'Bagikan Artikel',

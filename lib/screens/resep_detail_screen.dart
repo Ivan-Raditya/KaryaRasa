@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../data/resep_data.dart';
+import '../database/database.dart';
+import '../models/bookmark.dart';
+import '../models/koleksi_bookmark.dart';
+import '../utils/session_manager.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 class ResepDetailScreen extends StatefulWidget {
@@ -29,6 +33,46 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
     super.initState();
     _bookmarked = widget.resep.isBookmarked;
     _tabCtrl = TabController(length: 2, vsync: this);
+  }
+
+  Future<void> _toggleBookmark() async {
+    final idPengguna = SessionManager.instance.idPengguna;
+    final idResep = int.tryParse(widget.resep.id);
+
+    if (idPengguna == null || idResep == null) {
+      // Belum login — toggle lokal saja
+      setState(() {
+        _bookmarked = !_bookmarked;
+        widget.resep.isBookmarked = _bookmarked;
+      });
+      return;
+    }
+
+    final db = Database();
+    if (_bookmarked) {
+      await db.deleteBookmark(idResep, idPengguna);
+    } else {
+      final koleksiList = await db.getKoleksiByPengguna(idPengguna);
+      int idBookmark;
+      if (koleksiList.isEmpty) {
+        idBookmark = await db.insertKoleksi(KoleksiBookmark(
+          idPengguna: idPengguna,
+          judulBookmark: 'Favorit',
+        ));
+      } else {
+        idBookmark = koleksiList.first.idBookmark!;
+      }
+      await db.insertBookmark(Bookmark(
+        idResep: idResep,
+        idPengguna: idPengguna,
+        idBookmark: idBookmark,
+        tglDibuat: DateTime.now().toIso8601String(),
+      ));
+    }
+    setState(() {
+      _bookmarked = !_bookmarked;
+      widget.resep.isBookmarked = _bookmarked;
+    });
   }
 
   @override
@@ -172,7 +216,7 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
               ),
             ),
             GestureDetector(
-              onTap: () => setState(() => _bookmarked = !_bookmarked),
+              onTap: _toggleBookmark,
               child: Container(
                 width: 38,
                 height: 38,
@@ -572,7 +616,7 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
           children: [
             // Bookmark
             GestureDetector(
-              onTap: () => setState(() => _bookmarked = !_bookmarked),
+              onTap: _toggleBookmark,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 48,
