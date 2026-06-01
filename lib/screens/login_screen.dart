@@ -78,28 +78,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Back button dari login = keluar aplikasi
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) SystemNavigator.pop();
       },
       child: Scaffold(
-        // resizeToAvoidBottomInset: false agar keyboard tidak mendorong layout
         resizeToAvoidBottomInset: false,
         backgroundColor: Colors.black,
         body: Column(
           children: [
-            // ── Background Hero Image (40% layar, tidak bergerak) ──────
+            // ── Background Hero Image (38% layar) ──────────────────────
             Expanded(
               flex: 38,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   Image.asset(
-  'assets/images/figma_login_hero.png',
-  fit: BoxFit.cover,
-),
+                    'assets/images/figma_login_hero.png',
+                    fit: BoxFit.cover,
+                  ),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -112,7 +110,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  // Branding — tengah hero
                   Positioned.fill(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -145,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // ── Form Card (62% layar) ──────────────────────────────────
+            // ── Form Card (62% layar) ───────────────────────────────────
             Expanded(
               flex: 62,
               child: Container(
@@ -163,7 +160,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                child: Padding(
+                // ── PERUBAHAN: SingleChildScrollView menggantikan Padding langsung ──
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 18),
 
-                      // ── Email ────────────────────────────────────────
+                      // ── Email ──────────────────────────────────────────
                       const Text(
                         'ALAMAT EMAIL',
                         style: TextStyle(
@@ -212,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 14),
 
-                      // ── Password ─────────────────────────────────────
+                      // ── Password ───────────────────────────────────────
                       const Text(
                         'KATA SANDI',
                         style: TextStyle(
@@ -273,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // ── Login Button ──────────────────────────────────
+                      // ── Login Button ───────────────────────────────────
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -305,7 +303,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Divider ───────────────────────────────────────
+                      // ── Divider ────────────────────────────────────────
                       Row(
                         children: [
                           const Expanded(
@@ -330,7 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // ── Social Buttons ────────────────────────────────
+                      // ── Social Buttons ─────────────────────────────────
                       Row(
                         children: [
                           Expanded(
@@ -351,9 +349,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      const Spacer(),
 
-                      // ── Register Link ─────────────────────────────────
+                      // ── PERUBAHAN: Spacer dihapus, diganti SizedBox ────
+                      const SizedBox(height: 20),
+
+                      // ── Register Link ──────────────────────────────────
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -463,10 +463,14 @@ class _GooglePainter extends CustomPainter {
     }
 
     canvas.drawCircle(Offset(cx, cy), r * 0.45,
-        Paint()..color = Colors.white..style = PaintingStyle.fill);
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill);
     canvas.drawRect(
       Rect.fromLTRB(cx, cy - r * 0.18, cx + r * 0.72, cy + r * 0.18),
-      Paint()..color = const Color(0xFF4285F4)..style = PaintingStyle.fill,
+      Paint()
+        ..color = const Color(0xFF4285F4)
+        ..style = PaintingStyle.fill,
     );
   }
 
