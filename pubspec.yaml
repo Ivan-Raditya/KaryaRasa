@@ -12,6 +12,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.8.4
   google_fonts: ^6.2.1        # ← tambahkan ini
+  image_picker: ^1.1.2
+  http: ^1.2.1  
 
 dev_dependencies:
   flutter_test:

@@ -10,6 +10,7 @@ import 'screens/splash_screen.dart';
 import 'screens/artikel_screen.dart';
 import 'screens/article_detail_screen.dart';
 import 'utils/supabase_config.dart';
+import 'screens/bagikan_resep_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,7 @@ class MyApp extends StatelessWidget {
         '/search':   (context) => const SearchScreen(),
         '/bookmark': (context) => const BookmarkScreen(),
         '/artikel':  (context) => const ArtikelScreen(),
+        '/bagikan-resep':  (context) => const BagikanResepScreen(), 
       },
     );
   }

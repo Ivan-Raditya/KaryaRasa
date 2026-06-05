@@ -3,6 +3,7 @@ import '../data/resep_data.dart';
 import '../database/database.dart';
 import '../models/bookmark.dart';
 import '../models/koleksi_bookmark.dart';
+import '../models/langkah_masak.dart';
 import '../utils/session_manager.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -15,16 +16,15 @@ class ResepDetailScreen extends StatefulWidget {
   State<ResepDetailScreen> createState() => _ResepDetailScreenState();
 }
 
-class _ResepDetailScreenState extends State<ResepDetailScreen>
-    with SingleTickerProviderStateMixin {
+class _ResepDetailScreenState extends State<ResepDetailScreen> {
   int _currentImageIndex = 0;
   bool _bookmarked = false;
-  bool _isCooking = false;
-  late TabController _tabCtrl;
+
+  List<LangkahMasak> _langkahList = [];
+  bool _langkahLoading = true;
 
   static const _brown = Color(0xFF4A2B20);
   static const _terracotta = Color(0xFFC6572F);
-  static const _gold = Color(0xFFD9AE23);
   static const _creamBg = Color(0xFFFDFAF7);
   static const _darkBrown = Color(0xFF2C1A10);
 
@@ -32,7 +32,21 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
   void initState() {
     super.initState();
     _bookmarked = widget.resep.isBookmarked;
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _loadLangkah();
+  }
+
+  Future<void> _loadLangkah() async {
+    final idResep = int.tryParse(widget.resep.id);
+    if (idResep == null) {
+      setState(() => _langkahLoading = false);
+      return;
+    }
+    final db = Database();
+    final list = await db.getLangkahByResep(idResep);
+    setState(() {
+      _langkahList = list;
+      _langkahLoading = false;
+    });
   }
 
   Future<void> _toggleBookmark() async {
@@ -40,7 +54,6 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
     final idResep = int.tryParse(widget.resep.id);
 
     if (idPengguna == null || idResep == null) {
-      // Belum login — toggle lokal saja
       setState(() {
         _bookmarked = !_bookmarked;
         widget.resep.isBookmarked = _bookmarked;
@@ -69,16 +82,11 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
         tglDibuat: DateTime.now().toIso8601String(),
       ));
     }
+    if (!mounted) return;
     setState(() {
       _bookmarked = !_bookmarked;
       widget.resep.isBookmarked = _bookmarked;
     });
-  }
-
-  @override
-  void dispose() {
-    _tabCtrl.dispose();
-    super.dispose();
   }
 
   @override
@@ -99,10 +107,9 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
                     children: [
                       _buildTitleSection(),
                       _buildSejarahSection(),
-                      _buildTabBar(),
-                      _buildTabContent(),
-                      _buildVideoSection(),
-                      const SizedBox(height: 100),
+                      _buildLangkahSlider(),
+                      _buildBahanSection(),
+                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
@@ -111,8 +118,6 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
           ),
           // ── Top App Bar (floating) ─────────────────────────────────
           _buildTopBar(),
-          // ── Bottom CTA ────────────────────────────────────────────
-          _buildBottomCta(),
         ],
       ),
     );
@@ -136,15 +141,12 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
             ),
           ),
           // Title pill overlay
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+          Positioned.fill(
             child: Align(
               alignment: Alignment.center,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
                   color: _darkBrown.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(30),
@@ -267,14 +269,14 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
               const SizedBox(width: 4),
               Text(
                 widget.resep.daerah,
-                style:
-                    const TextStyle(fontSize: 13, color: _terracotta),
+                style: const TextStyle(fontSize: 13, color: _terracotta),
               ),
               const Spacer(),
-              _infoChip(Icons.timer_outlined, '${widget.resep.durasiMasak} menit'),
+              _infoChip(Icons.timer_outlined,
+                  '${widget.resep.durasiMasak} menit'),
               const SizedBox(width: 8),
-              _infoChip(Icons.people_outline_rounded,
-                  '${widget.resep.porsi} porsi'),
+              _infoChip(
+                  Icons.people_outline_rounded, '${widget.resep.porsi} porsi'),
             ],
           ),
           const SizedBox(height: 16),
@@ -339,183 +341,160 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
     );
   }
 
-  // ── Tab Bar ─────────────────────────────────────────────────────────────────
-  Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0EDE8),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TabBar(
-        controller: _tabCtrl,
-        indicator: BoxDecoration(
-          color: _terracotta,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.grey[600],
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
-        ),
-        tabs: const [
-          Tab(text: 'Bahan-Bahan'),
-          Tab(text: 'Cara Membuat'),
-        ],
-        onTap: (_) => setState(() {}),
-      ),
-    );
-  }
-
-  // ── Tab Content ─────────────────────────────────────────────────────────────
-  Widget _buildTabContent() {
-    return AnimatedBuilder(
-      animation: _tabCtrl,
-      builder: (_, __) {
-        if (_tabCtrl.index == 0) {
-          return _buildBahanTab();
-        } else {
-          return _buildCaraMembuatTab();
-        }
-      },
-    );
-  }
-
-  Widget _buildBahanTab() {
+  // ── Langkah Slider (Horizontal) ─────────────────────────────────────────────
+  Widget _buildLangkahSlider() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: widget.resep.bahanSections.map((section) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  section.judul,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: _darkBrown,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...section.items.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(top: 6),
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: _terracotta,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            '${item.jumlah} ',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: _darkBrown,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              item.nama,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildCaraMembuatTab() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Cara Membuat',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: _darkBrown,
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Text(
+              'Langkah Memasak',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: _darkBrown,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          ...widget.resep.langkah.asMap().entries.map((e) {
-            final idx = e.key + 1;
-            final text = e.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Row(
+          if (_langkahLoading)
+            const SizedBox(
+              height: 180,
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: _terracotta,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else if (_langkahList.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: Text(
+                'Belum ada langkah memasak.',
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              ),
+            )
+          else
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                itemCount: _langkahList.length,
+                itemBuilder: (_, i) => _buildLangkahCard(_langkahList[i], i),
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLangkahCard(LangkahMasak langkah, int index) {
+    final hasFoto = langkah.fotoLangkah != null &&
+        langkah.fotoLangkah!.isNotEmpty;
+
+    return Container(
+      width: 180,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Foto langkah ──
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(16)),
+            child: hasFoto
+                ? Image.network(
+                    langkah.fotoLangkah!,
+                    height: 110,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _langkahFotoPlaceholder(),
+                  )
+                : _langkahFotoPlaceholder(),
+          ),
+          // ── Nomor + deskripsi ──
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: _terracotta,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    alignment: Alignment.center,
                     child: Text(
-                      '$idx',
+                      'Langkah ${langkah.nomorUrut}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(height: 6),
                   Expanded(
                     child: Text(
-                      text,
+                      langkah.deskripsiLangkah,
                       style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                        height: 1.65,
+                        fontSize: 12,
+                        color: Colors.grey[700],
+                        height: 1.5,
                       ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
-            );
-          }),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ── Video Section ───────────────────────────────────────────────────────────
-  Widget _buildVideoSection() {
+  Widget _langkahFotoPlaceholder() {
+    return Container(
+      height: 110,
+      width: double.infinity,
+      color: const Color(0xFFF3EDE6),
+      child: const Icon(
+        Icons.restaurant_outlined,
+        color: Color(0xFFD9B8A8),
+        size: 36,
+      ),
+    );
+  }
+
+  // ── Bahan-Bahan Section ─────────────────────────────────────────────────────
+  Widget _buildBahanSection() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Tonton Video Pembuatan',
+            'Bahan-Bahan',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -523,166 +502,65 @@ class _ResepDetailScreenState extends State<ResepDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  height: 180,
-                  width: double.infinity,
-                  child: Image.network(
-                    widget.resep.videoThumbnail,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Container(color: _brown.withValues(alpha: 0.5)),
-                  ),
-                ),
-                // Dark overlay
-                Container(
-                  height: 180,
-                  color: _darkBrown.withValues(alpha: 0.45),
-                ),
-                // Play button pill
-                GestureDetector(
-                  onTap: () {
-                    setState(() => _isCooking = !_isCooking);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Membuka video pembuatan...'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: _terracotta,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _terracotta.withValues(alpha: 0.4),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.play_arrow_rounded,
-                            color: Colors.white, size: 24),
-                        SizedBox(width: 8),
-                        Text(
-                          'Mulai Memasak',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Bottom CTA ──────────────────────────────────────────────────────────────
-  Widget _buildBottomCta() {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        decoration: BoxDecoration(
-          color: _creamBg,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Bookmark
-            GestureDetector(
-              onTap: _toggleBookmark,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _bookmarked
-                      ? _terracotta.withValues(alpha: 0.1)
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _bookmarked
-                        ? _terracotta.withValues(alpha: 0.3)
-                        : const Color(0xFFEEEEEE),
-                  ),
-                ),
-                child: Icon(
-                  _bookmarked
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
-                  color: _bookmarked ? _terracotta : Colors.grey,
-                  size: 22,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Start cooking CTA
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  _tabCtrl.animateTo(1);
-                  setState(() {});
-                },
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: _terracotta,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _terracotta.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.restaurant_menu_rounded,
-                          color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Mulai Memasak',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
+          ...widget.resep.bahanSections.map((section) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (section.judul.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        section.judul,
+                        style: const TextStyle(
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
+                          color: _brown,
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  ...section.items.map((item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 7),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(top: 6),
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: _terracotta,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${item.jumlah} ',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _darkBrown,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                item.nama,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
               ),
-            ),
-          ],
-        ),
+            );
+          }),
+          const Divider(color: Color(0xFFEEEEEE)),
+        ],
       ),
     );
   }

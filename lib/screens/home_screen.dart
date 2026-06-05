@@ -37,13 +37,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onNavTap(int index) {
-    if (index == _navIndex) return;
     if (index == 1) {
       Navigator.of(context).pushNamed('/search');
     } else if (index == 2) {
-      Navigator.of(context).pushNamed('/bookmark');
+      Navigator.of(context).pushNamed('/bagikan-resep');
     } else if (index == 3) {
-      Navigator.of(context).pushNamed('/artikel');
+      Navigator.of(context).pushNamed('/bookmark');
     } else if (index == 4) {
       Navigator.of(context).pushNamed('/profile');
     } else {
