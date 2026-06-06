@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
+import '../utils/supabase_config.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL — struktur tetap sama, dipakai semua screen tanpa perubahan

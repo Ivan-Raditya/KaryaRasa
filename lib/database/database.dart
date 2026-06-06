@@ -166,7 +166,14 @@ Future<void> updateEmbeddingResep(int idResep, List<double> embedding) async {
       .update({'embedding': embedding})
       .eq('idResep', idResep);
 }
-
+Future<bool> cekEmbeddingAda(int idResep) async {
+  final result = await supabase
+      .from('resepmakanan')
+      .select('embedding')
+      .eq('idResep', idResep)
+      .single();
+  return result['embedding'] != null;
+}
 /// Cari resep mirip menggunakan cosine similarity via RPC pgvector.
 /// Return: List of {idResep, similarity} diurutkan terdekat.
 Future<List<Map<String, dynamic>>> cariResepPgvector(

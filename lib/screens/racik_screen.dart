@@ -99,28 +99,40 @@ Future<void> _cariRekomendasi() async {
 
     // 2. Generate embedding dari input bahan user
     final queryEmbedding = await generateEmbedding(bahanInput);
-
+debugPrint('PATH: ${queryEmbedding != null ? "pgvector" : "fallback teks"}');
     List<_HasilRacik> top = [];
 
     if (queryEmbedding != null) {
       // ── Path A: pgvector ──────────────────────────────────────────────
       final pgResult = await db.cariResepPgvector(queryEmbedding, limit: 5);
 
-      for (final row in pgResult) {
-        final idResep   = row['idResep'] as int?;
-        final similarity = (row['similarity'] as num?)?.toDouble() ?? 0.0;
-        if (idResep == null) continue;
+final bahanLower = _bahanList.map((b) => b.toLowerCase()).toList();
 
-        // Cari data lokal dari kResepList supaya tidak perlu query ulang
-        final resepLocal = kResepList.firstWhere(
-          (r) => r.id == idResep.toString(),
-          orElse: () => throw StateError('not found'),
-        );
+for (final row in pgResult) {
+  final idResep    = row['idResep'] as int?;
+  final similarity = (row['similarity'] as num?)?.toDouble() ?? 0.0;
+  if (idResep == null) continue;
 
-        // Konversi similarity (0–1) ke skor persentase (1–100)
-        final skor = (similarity * 100).round().clamp(1, 100);
-        top.add(_HasilRacik(resep: resepLocal, skor: skor));
-      }
+  final resepLocal = kResepList.cast<ResepData?>().firstWhere(
+    (r) => r!.id == idResep.toString(),
+    orElse: () => null,
+  );
+  if (resepLocal == null) continue;
+
+  // Filter: semua bahan input harus ada di resep
+  final semuaBahanResep = resepLocal.bahanSections
+      .expand((s) => s.items)
+      .map((i) => i.nama.toLowerCase())
+      .toList();
+
+  final adaSemua = bahanLower.every(
+    (bahan) => semuaBahanResep.any((b) => b.contains(bahan) || bahan.contains(b)),
+  );
+  if (!adaSemua) continue;
+
+  final skor = (similarity * 100).round().clamp(1, 100);
+  top.add(_HasilRacik(resep: resepLocal, skor: skor));
+}
     } else {
       // ── Path B: fallback ke algoritma teks lama ───────────────────────
       final bahanLower = _bahanList.map((b) => b.toLowerCase()).toList();
@@ -140,7 +152,6 @@ Future<void> _cariRekomendasi() async {
           }
         }
         if (cocok == 0) continue;
-
         final skor = ((cocok / semuaBahan.length) * 100).round().clamp(1, 100);
         kandidat.add(_HasilRacik(resep: resep, skor: skor));
       }

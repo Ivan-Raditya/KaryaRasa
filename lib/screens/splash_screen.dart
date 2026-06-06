@@ -1,3 +1,4 @@
+import '../utils/supabase_config.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import '../data/resep_data.dart';
 import '../utils/session_manager.dart';
 import '../database/database.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,11 +36,14 @@ class _SplashScreenState extends State<SplashScreen>
     _start();
   }
 
-  Future<void> _start() async {
-    // Load resep di background
-    loadResepFromDatabase().catchError((e) => debugPrint('loadResep: $e'));
+ Future<void> _start() async {
+  // Tunggu resep selesai load
+  await loadResepFromDatabase().catchError((e) => debugPrint('loadResep: $e'));
 
-    await Future.delayed(const Duration(milliseconds: 2000));
+  // Seed embedding jalan di background
+  _seedEmbeddingJikaPerlu();
+
+  await Future.delayed(const Duration(milliseconds: 2000));
     if (!mounted) return;
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -63,7 +68,37 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.of(context).pushReplacementNamed('/login');
     }
   }
+Future<void> _seedEmbeddingJikaPerlu() async {
+  debugPrint('🌱 Seed embedding mulai, total resep: ${kResepList.length}');
+  final db = Database();
+  for (final resep in kResepList) {
+    final idResep = int.tryParse(resep.id);
+    if (idResep == null) {
+      debugPrint('⚠️ idResep null untuk ${resep.nama}');
+      continue;
+    }
 
+    final sudahAda = await db.cekEmbeddingAda(idResep);
+    debugPrint('📋 ${resep.nama} — embedding sudah ada: $sudahAda');
+    if (sudahAda) continue;
+
+    final semuaBahan = resep.bahanSections
+        .expand((s) => s.items)
+        .map((b) => b.nama)
+        .join(', ');
+    final teks = '${resep.nama}. Bahan: $semuaBahan';
+    debugPrint('🔄 Generate embedding untuk: ${resep.nama}');
+
+    final embedding = await generateEmbedding(teks);
+    if (embedding != null) {
+      await db.updateEmbeddingResep(idResep, embedding);
+      debugPrint('✅ Embedding: ${resep.nama}');
+    } else {
+      debugPrint('❌ Gagal generate: ${resep.nama}');
+    }
+  }
+  debugPrint('🌱 Seed embedding selesai');
+}
   @override
   void dispose() {
     _fadeController.dispose();

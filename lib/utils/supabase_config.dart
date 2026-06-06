@@ -1,4 +1,5 @@
-﻿import 'package:supabase_flutter/supabase_flutter.dart';
+﻿import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -10,18 +11,20 @@ String get geminiApiKey => dotenv.env['GEMINI_API_KEY']!;
 Future<List<double>?> generateEmbedding(String teks) async {
   try {
     final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=$geminiApiKey',
+      'https://generativelanguage.googleapis.com/v1/models/gemini-embedding-001:embedContent?key=$geminiApiKey',
     );
     final res = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'model': 'models/text-embedding-004',
+        'model': 'models/gemini-embedding-001',
         'content': {
           'parts': [{'text': teks}]
         }
       }),
     );
+    debugPrint('Gemini status: ${res.statusCode}');
+    debugPrint('Gemini body: ${res.body}');
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       final values = data['embedding']['values'] as List;
@@ -29,6 +32,7 @@ Future<List<double>?> generateEmbedding(String teks) async {
     }
     return null;
   } catch (e) {
+    debugPrint('generateEmbedding error: $e');
     return null;
   }
 }
