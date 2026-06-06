@@ -44,18 +44,19 @@ class _LangkahItem {
 }
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
-class BagikanResepScreen extends StatefulWidget {
-  const BagikanResepScreen({super.key});
+class KreasiScreen  extends StatefulWidget {
+  const KreasiScreen({super.key});
 
   @override
-  State<BagikanResepScreen> createState() => _BagikanResepScreenState();
+  State<KreasiScreen> createState() => _KreasiScreenState();
 }
 
-class _BagikanResepScreenState extends State<BagikanResepScreen> {
+class _KreasiScreenState extends State<KreasiScreen> {
   final _formKey = GlobalKey<FormState>();
   final _namaCtrl = TextEditingController();
   final _deskripsiCtrl = TextEditingController();
   final _asalDaerahCtrl = TextEditingController();
+  final _porsiCtrl = TextEditingController();
   final _picker = ImagePicker();
 
   String _kategori = 'Makanan';
@@ -73,6 +74,7 @@ class _BagikanResepScreenState extends State<BagikanResepScreen> {
     _namaCtrl.dispose();
     _deskripsiCtrl.dispose();
     _asalDaerahCtrl.dispose();
+    _porsiCtrl.dispose();
     for (final b in _bahanList) b.dispose();
     for (final l in _langkahList) l.dispose();
     super.dispose();
@@ -115,7 +117,7 @@ setState(() {
   _fotoResepPublicId = result?['public_id'];
   _isUploadingFotoResep = false;
 });
-    if (url == null && mounted) {
+    if (_fotoResepUrl == null && mounted) {
       _showSnack('Gagal mengupload foto resep. Coba lagi.', isError: true);
     }
   }
@@ -129,12 +131,12 @@ setState(() {
       _langkahList[index].foto = File(picked.path);
       _langkahList[index].isUploadingFoto = true;
     });
-    final url = await _uploadToCloudinary(_langkahList[index].foto!);
-    setState(() {
-      _langkahList[index].fotoUrl = url;
+    final result = await _uploadToCloudinary(_langkahList[index].foto!);
+setState(() {
+  _langkahList[index].fotoUrl = result?['url'];
       _langkahList[index].isUploadingFoto = false;
     });
-    if (url == null && mounted) {
+    if (result == null && mounted) {  
       _showSnack('Gagal mengupload foto langkah. Coba lagi.', isError: true);
     }
   }
@@ -175,11 +177,12 @@ setState(() {
             'deskripsiResep': _deskripsiCtrl.text.trim(),
             'kategoriResep': _kategori,
             'asalDaerah': _asalDaerahCtrl.text.trim(),
+            'porsi': int.tryParse(_porsiCtrl.text.trim()) ?? 4,
             'fotoResep': _fotoResepUrl,
-            'fotoResepPublicId': _fotoResepPublicId,
+            'fotoreseppublicid': _fotoResepPublicId,
             'statusResep': 'menunggu',
             'tglDibuat': now,
-            'idPengguna': idPengguna,
+            'idpengguna': idPengguna,
           })
           .select('idResep')
           .single();
@@ -277,7 +280,7 @@ setState(() {
         child: const Icon(Icons.arrow_back, color: _brown),
       ),
       title: Text(
-        'Bagikan Resep',
+        'Kreasi',
         style: GoogleFonts.playfairDisplay(
           fontSize: 20,
           fontWeight: FontWeight.w700,
@@ -419,6 +422,14 @@ setState(() {
           validator: (v) =>
               v == null || v.trim().isEmpty ? 'Asal daerah wajib diisi' : null,
         ),
+        const SizedBox(height: 14),
+        _buildTextField(
+         controller: _porsiCtrl,
+         hint: 'Contoh: 4',
+         label: 'Porsi (orang)',
+     keyboardType: TextInputType.number,
+     
+),  
         const SizedBox(height: 14),
         Text('Kategori',
             style: GoogleFonts.inter(
@@ -747,6 +758,7 @@ setState(() {
     int maxLines = 1,
     bool compact = false,
     String? Function(String?)? validator,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,6 +775,7 @@ setState(() {
           controller: controller,
           maxLines: maxLines,
           validator: validator,
+           keyboardType: keyboardType,
           style: GoogleFonts.inter(fontSize: 13, color: _brown),
           decoration: InputDecoration(
             hintText: hint,

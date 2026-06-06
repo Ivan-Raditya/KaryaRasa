@@ -5,6 +5,7 @@ import '../data/resep_data.dart';
 import '../utils/session_manager.dart';
 import 'resep_detail_screen.dart';
 import 'search_screen.dart';
+import 'kreasi_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,9 +41,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index == 1) {
       Navigator.of(context).pushNamed('/search');
     } else if (index == 2) {
-      Navigator.of(context).pushNamed('/bagikan-resep');
+      Navigator.of(context).pushNamed('/kreasi');
     } else if (index == 3) {
-      Navigator.of(context).pushNamed('/bookmark');
+      Navigator.of(context).pushNamed('/racik');
     } else if (index == 4) {
       Navigator.of(context).pushNamed('/profile');
     } else {

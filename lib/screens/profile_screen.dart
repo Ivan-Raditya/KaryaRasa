@@ -216,9 +216,9 @@ class ProfileScreen extends StatelessWidget {
               } else if (index == 1) {
                 Navigator.of(context).pushNamed('/search');
               } else if (index == 2) {
-                Navigator.of(context).pushNamed('/bookmark');
+                Navigator.of(context).pushNamed('/kreasi');
               } else if (index == 3) {
-                Navigator.of(context).pushReplacementNamed('/artikel');
+                Navigator.of(context).pushReplacementNamed('/racik');
               }
             },
           ),

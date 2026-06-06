@@ -57,7 +57,7 @@ class KaryaRasaBottomNav extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     const Text(
-                      'Bagikan',
+                      'Kreasi',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -67,7 +67,7 @@ class KaryaRasaBottomNav extends StatelessWidget {
                   ],
                 ),
               ),
-              _NavItem(icon: Icons.bookmark_border_rounded, label: 'Simpan', active: currentIndex == 3, activeIcon: Icons.bookmark_rounded, onTap: () => onTap(3)),
+              _NavItem(icon: Icons.soup_kitchen_outlined, label: 'Racik', active: currentIndex == 3, onTap: () => onTap(3)),
               _NavItem(icon: Icons.person_outline_rounded, label: 'Profil', active: currentIndex == 4, activeIcon: Icons.person_rounded, onTap: () => onTap(4)),
             ],
           ),

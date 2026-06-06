@@ -1,7 +1,37 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+﻿import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-const supabaseUrl = 'https://kdeqqaoxhmhvpxlrguzd.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkZXFxYW94aG1odnB4bHJndXpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MjMxNzIsImV4cCI6MjA5NDk5OTE3Mn0.Dt385w_zYcg7jYVlhzK5P1dMlsPhtTIFWr2fWLSdQmY';
+String get supabaseUrl => dotenv.env['SUPABASE_URL']!;
+String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY']!;
+String get geminiApiKey => dotenv.env['GEMINI_API_KEY']!;
+
+Future<List<double>?> generateEmbedding(String teks) async {
+  try {
+    final uri = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=$geminiApiKey',
+    );
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'model': 'models/text-embedding-004',
+        'content': {
+          'parts': [{'text': teks}]
+        }
+      }),
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final values = data['embedding']['values'] as List;
+      return values.map((v) => (v as num).toDouble()).toList();
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 /// Shortcut akses Supabase client dari mana saja
 SupabaseClient get supabase => Supabase.instance.client;

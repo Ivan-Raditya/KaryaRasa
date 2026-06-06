@@ -5,6 +5,7 @@ import '../models/bookmark.dart';
 import '../models/koleksi_bookmark.dart';
 import '../models/langkah_masak.dart';
 import '../utils/session_manager.dart';
+import '../models/like_resep.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 class ResepDetailScreen extends StatefulWidget {
@@ -19,6 +20,9 @@ class ResepDetailScreen extends StatefulWidget {
 class _ResepDetailScreenState extends State<ResepDetailScreen> {
   int _currentImageIndex = 0;
   bool _bookmarked = false;
+  bool _liked = false;
+int _likeCount = 0;
+int _bookmarkCount = 0;
 
   List<LangkahMasak> _langkahList = [];
   bool _langkahLoading = true;
@@ -33,6 +37,7 @@ class _ResepDetailScreenState extends State<ResepDetailScreen> {
     super.initState();
     _bookmarked = widget.resep.isBookmarked;
     _loadLangkah();
+     _loadLikeState();
   }
 
   Future<void> _loadLangkah() async {
@@ -88,6 +93,41 @@ class _ResepDetailScreenState extends State<ResepDetailScreen> {
       widget.resep.isBookmarked = _bookmarked;
     });
   }
+  Future<void> _loadLikeState() async {
+  final idPengguna = SessionManager.instance.idPengguna;
+  final idResep = int.tryParse(widget.resep.id);
+  if (idResep == null) return;
+  final db = Database();
+  final liked = idPengguna != null
+      ? await db.isResepDilike(idResep, idPengguna)
+      : false;
+  final likeCount     = await db.getLikeCount(idResep);
+  final bookmarkCount = await db.getBookmarkCount(idResep);
+  if (!mounted) return;
+  setState(() {
+    _liked         = liked;
+    _likeCount     = likeCount;
+    _bookmarkCount = bookmarkCount;
+  });
+}
+
+Future<void> _toggleLike() async {
+  final idPengguna = SessionManager.instance.idPengguna;
+  final idResep    = int.tryParse(widget.resep.id);
+  if (idPengguna == null || idResep == null) return;
+  final db = Database();
+  if (_liked) {
+    await db.deleteLike(idResep, idPengguna);
+    setState(() { _liked = false; _likeCount--; });
+  } else {
+    await db.insertLike(LikeResep(
+      idResep: idResep,
+      idPengguna: idPengguna,
+      tglLike: DateTime.now().toIso8601String(),
+    ));
+    setState(() { _liked = true; _likeCount++; });
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -138,29 +178,6 @@ class _ResepDetailScreenState extends State<ResepDetailScreen> {
               fit: BoxFit.cover,
               width: double.infinity,
               errorBuilder: (_, __, ___) => Container(color: _brown),
-            ),
-          ),
-          // Title pill overlay
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.center,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _darkBrown.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  widget.resep.nama,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
             ),
           ),
           // Page indicator dots
@@ -215,6 +232,37 @@ class _ResepDetailScreenState extends State<ResepDetailScreen> {
                 ),
                 child: const Icon(Icons.arrow_back_ios_new_rounded,
                     color: _brown, size: 16),
+              ),
+),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(19),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8)
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    widget.resep.nama,
+                    style: const TextStyle(
+                      color: _brown,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
             ),
             GestureDetector(
@@ -281,6 +329,39 @@ class _ResepDetailScreenState extends State<ResepDetailScreen> {
           ),
           const SizedBox(height: 16),
           const Divider(color: Color(0xFFEEEEEE)),
+          Row(
+  children: [
+    GestureDetector(
+      onTap: _toggleLike,
+      child: Row(
+        children: [
+          Icon(
+            _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            color: _liked ? Colors.red : _brown,
+            size: 20,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$_likeCount',
+            style: const TextStyle(fontSize: 13, color: _brown),
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(width: 16),
+    Row(
+      children: [
+        Icon(Icons.bookmark_border_rounded, color: _brown, size: 20),
+        const SizedBox(width: 4),
+        Text(
+          '$_bookmarkCount',
+          style: const TextStyle(fontSize: 13, color: _brown),
+        ),
+      ],
+    ),
+  ],
+),
+const SizedBox(height: 16),
         ],
       ),
     );
@@ -508,18 +589,7 @@ class _ResepDetailScreenState extends State<ResepDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (section.judul.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        section.judul,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: _brown,
-                        ),
-                      ),
-                    ),
+
                   ...section.items.map((item) => Padding(
                         padding: const EdgeInsets.only(bottom: 7),
                         child: Row(
