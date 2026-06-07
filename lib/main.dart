@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
@@ -10,15 +11,18 @@ import 'screens/splash_screen.dart';
 import 'screens/artikel_screen.dart';
 import 'screens/article_detail_screen.dart';
 import 'utils/supabase_config.dart';
+import 'screens/kreasi_screen.dart';
+import 'screens/racik_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
 
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
-
   runApp(const MyApp());
 }
 
@@ -36,16 +40,28 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
       ),
       initialRoute: '/splash',
-      routes: {
-        '/splash':   (context) => const SplashScreen(),
-        '/login':    (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/':         (context) => const HomeScreen(),
-        '/profile':  (context) => const ProfileScreen(),
-        '/search':   (context) => const SearchScreen(),
-        '/bookmark': (context) => const BookmarkScreen(),
-        '/artikel':  (context) => const ArtikelScreen(),
-      },
+onGenerateRoute: (settings) {
+  Widget page;
+  switch (settings.name) {
+    case '/splash':   page = const SplashScreen(); break;
+    case '/login':    page = const LoginScreen(); break;
+    case '/register': page = const RegisterScreen(); break;
+    case '/':         page = const HomeScreen(); break;
+    case '/profile':  page = const ProfileScreen(); break;
+    case '/search':   page = const SearchScreen(); break;
+    case '/bookmark': page = const BookmarkScreen(); break;
+    case '/artikel':  page = const ArtikelScreen(); break;
+    case '/kreasi':   page = const KreasiScreen(); break;
+    case '/racik':    page = const RacikScreen(); break;
+    default:          page = const HomeScreen();
+  }
+  return PageRouteBuilder(
+    settings: settings,
+    pageBuilder: (_, __, ___) => page,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+  );
+},
     );
   }
 }

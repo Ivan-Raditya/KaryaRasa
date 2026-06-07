@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../database/database.dart';
 import '../models/artikel.dart';
 import '../models/simpan_artikel.dart';
@@ -86,15 +85,7 @@ class _ArtikelScreenState extends State<ArtikelScreen>
                 ),
               ),
             ),
-            KaryaRasaBottomNav(
-              currentIndex: 3,
-              onTap: (index) {
-                if (index == 0) Navigator.of(context).pushReplacementNamed('/');
-                else if (index == 1) Navigator.of(context).pushReplacementNamed('/search');
-                else if (index == 2) Navigator.of(context).pushReplacementNamed('/bookmark');
-                else if (index == 4) Navigator.of(context).pushReplacementNamed('/profile');
-              },
-            ),
+
           ],
         ),
     );

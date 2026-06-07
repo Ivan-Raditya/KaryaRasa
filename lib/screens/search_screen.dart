@@ -299,9 +299,9 @@ Container(
                 if (index == 0) {
                   Navigator.of(context).pushReplacementNamed('/');
                 } else if (index == 2) {
-                  Navigator.of(context).pushReplacementNamed('/bookmark');
+                  Navigator.of(context).pushReplacementNamed('/kreasi');
                 } else if (index == 3) {
-                  Navigator.of(context).pushReplacementNamed('/artikel');
+                  Navigator.of(context).pushReplacementNamed('/racik');
                 } else if (index == 4) {
                   Navigator.of(context).pushNamed('/profile');
                 }

@@ -1,6 +1,6 @@
 class ResepMakanan {
   final int? idResep;
-  final int? idHasil; // FK ke HasilRekomendasiAI
+  final int porsi;
   final String namaResep;
   final String deskripsiResep;
   final String tglDibuat;
@@ -12,8 +12,8 @@ class ResepMakanan {
 
   ResepMakanan({
     this.idResep,
-    this.idHasil,
     required this.namaResep,
+    required this.porsi,
     required this.deskripsiResep,
     required this.tglDibuat,
     required this.kategoriResep,
@@ -26,8 +26,8 @@ class ResepMakanan {
   factory ResepMakanan.fromMap(Map<String, dynamic> map) {
     return ResepMakanan(
       idResep: map['idResep'] as int?,
-      idHasil: map['idHasil'] as int?,
       namaResep: map['namaResep'] as String,
+      porsi: map['porsi'] as int? ?? 4,
       deskripsiResep: map['deskripsiResep'] as String,
       tglDibuat: map['tglDibuat'] as String,
       kategoriResep: map['kategoriResep'] as String,
@@ -41,8 +41,8 @@ class ResepMakanan {
   Map<String, dynamic> toMap() {
     return {
       if (idResep != null) 'idResep': idResep,
-      'idHasil': idHasil,
       'namaResep': namaResep,
+      'porsi': porsi,
       'deskripsiResep': deskripsiResep,
       'tglDibuat': tglDibuat,
       'kategoriResep': kategoriResep,

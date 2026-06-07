@@ -12,6 +12,7 @@ class KaryaRasaBottomNav extends StatelessWidget {
 
   static const _activeColor = Color(0xFFC6572F);
   static const _inactiveColor = Color(0xFF9E9E9E);
+  static const _gold = Color(0xFFD9AE23);
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +33,41 @@ class KaryaRasaBottomNav extends StatelessWidget {
             children: [
               _NavItem(icon: Icons.home_rounded, label: 'Beranda', active: currentIndex == 0, onTap: () => onTap(0)),
               _NavItem(icon: Icons.explore_rounded, label: 'Jelajah', active: currentIndex == 1, onTap: () => onTap(1)),
-              _NavItem(icon: Icons.bookmark_border_rounded, label: 'Simpan', active: currentIndex == 2, activeIcon: Icons.bookmark_rounded, onTap: () => onTap(2)),
-              _NavItem(icon: Icons.article_outlined, label: 'Artikel', active: currentIndex == 3, activeIcon: Icons.article_rounded, onTap: () => onTap(3)),
+              // Tombol Bagikan di tengah
+              GestureDetector(
+                onTap: () => onTap(2),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _gold,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _gold.withOpacity(0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Kreasi',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _gold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _NavItem(icon: Icons.soup_kitchen_outlined, label: 'Racik', active: currentIndex == 3, onTap: () => onTap(3)),
               _NavItem(icon: Icons.person_outline_rounded, label: 'Profil', active: currentIndex == 4, activeIcon: Icons.person_rounded, onTap: () => onTap(4)),
             ],
           ),

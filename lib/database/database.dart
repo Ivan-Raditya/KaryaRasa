@@ -12,6 +12,7 @@ import '../models/riwayat_kreasi_ai.dart';
 import '../models/hasil_rekomendasi_ai.dart';
 import '../models/progres_memasak.dart';
 import '../utils/supabase_config.dart';
+import '../models/like_resep.dart';
 
 class Database {
   static final Database _instance = Database._internal();
@@ -153,6 +154,41 @@ class Database {
         })
         .eq('idResep', idResep);
   }
+  // ══════════════════════════════════════════════════════════════════════════
+// EMBEDDING PGVECTOR
+// ══════════════════════════════════════════════════════════════════════════
+
+/// Simpan embedding ke kolom `embedding` di tabel resepmakanan.
+/// Dipanggil satu per satu untuk setiap resep.
+Future<void> updateEmbeddingResep(int idResep, List<double> embedding) async {
+  await supabase
+      .from('resepmakanan')
+      .update({'embedding': embedding})
+      .eq('idResep', idResep);
+}
+Future<bool> cekEmbeddingAda(int idResep) async {
+  final result = await supabase
+      .from('resepmakanan')
+      .select('embedding')
+      .eq('idResep', idResep)
+      .single();
+  return result['embedding'] != null;
+}
+/// Cari resep mirip menggunakan cosine similarity via RPC pgvector.
+/// Return: List of {idResep, similarity} diurutkan terdekat.
+Future<List<Map<String, dynamic>>> cariResepPgvector(
+  List<double> queryEmbedding, {
+  int limit = 5,
+}) async {
+  final result = await supabase.rpc(
+    'cari_resep_pgvector',
+    params: {
+      'query_embedding': queryEmbedding,
+      'match_count': limit,
+    },
+  );
+  return List<Map<String, dynamic>>.from(result as List);
+}
 
   // ══════════════════════════════════════════════════════════════════════════
   // LANGKAH MASAK
@@ -397,7 +433,7 @@ class Database {
 
   Future<int> insertHasilAI(HasilRekomendasiAI hasil) async {
     final result = await supabase
-        .from('hasilrekomendaasiai')
+        .from('hasilrekomendasiai')
         .insert(hasil.toMap())
         .select('idHasil')
         .single();
@@ -406,10 +442,10 @@ class Database {
 
   Future<List<ResepMakanan>> getResepRekomendasiAI(int idKreasi) async {
     final result = await supabase
-        .from('resepmakanan')
-        .select('*, hasilrekomendaasiai!inner(skorKecocokan, idKreasi)')
-        .eq('hasilrekomendaasiai.idKreasi', idKreasi)
-        .order('hasilrekomendaasiai.skorKecocokan', ascending: false);
+        .from('hasilrekomendasiai')
+.select('*, resepmakanan!inner(*)')
+.eq('idKreasi', idKreasi)
+.order('skorKecocokan', ascending: false);
     return (result as List).map((e) => ResepMakanan.fromMap(e)).toList();
   }
 
@@ -444,4 +480,47 @@ class Database {
         .eq('idPengguna', idPengguna)
         .inFilter('idLangkah', ids);
   }
+  // ══════════════════════════════════════════════════════════════════════════
+// LIKE RESEP
+// ══════════════════════════════════════════════════════════════════════════
+
+Future<void> insertLike(LikeResep like) async {
+  await supabase
+      .from('likeresep')
+      .insert(like.toMap());
+}
+
+Future<void> deleteLike(int idResep, int idPengguna) async {
+  await supabase
+      .from('likeresep')
+      .delete()
+      .eq('idResep', idResep)
+      .eq('idPengguna', idPengguna);
+}
+
+Future<bool> isResepDilike(int idResep, int idPengguna) async {
+  final result = await supabase
+      .from('likeresep')
+      .select('idLike')
+      .eq('idResep', idResep)
+      .eq('idPengguna', idPengguna)
+      .maybeSingle();
+  return result != null;
+}
+
+Future<int> getLikeCount(int idResep) async {
+  final result = await supabase
+      .from('likeresep')
+      .select()
+      .eq('idResep', idResep);
+  return (result as List).length;
+}
+
+Future<int> getBookmarkCount(int idResep) async {
+  final result = await supabase
+      .from('bookmark')
+      .select()
+      .eq('idResep', idResep);
+  return (result as List).length;
+}
 }

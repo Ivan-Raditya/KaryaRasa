@@ -4,6 +4,7 @@ class LangkahMasak {
   final int nomorUrut;
   final String deskripsiLangkah;
   final int? durasi; // dalam menit
+  final String? fotoLangkah;
 
   LangkahMasak({
     this.idLangkah,
@@ -11,6 +12,7 @@ class LangkahMasak {
     required this.nomorUrut,
     required this.deskripsiLangkah,
     this.durasi,
+    this.fotoLangkah,
   });
 
   factory LangkahMasak.fromMap(Map<String, dynamic> map) {
@@ -20,6 +22,7 @@ class LangkahMasak {
       nomorUrut: map['nomorUrut'] as int,
       deskripsiLangkah: map['deskripsiLangkah'] as String,
       durasi: map['durasi'] as int?,
+      fotoLangkah: map['fotolangkah'] as String?,
     );
   }
 
@@ -30,6 +33,7 @@ class LangkahMasak {
       'nomorUrut': nomorUrut,
       'deskripsiLangkah': deskripsiLangkah,
       'durasi': durasi,
+      'fotolangkah': fotoLangkah,
     };
   }
 }

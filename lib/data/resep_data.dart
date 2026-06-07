@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
+import '../utils/supabase_config.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL — struktur tetap sama, dipakai semua screen tanpa perubahan
@@ -102,7 +103,7 @@ Future<void> loadResepFromDatabase() async {
       imageUrls: imageUrls,
       videoThumbnail: imageUrls.first,
       durasiMasak: totalDurasi > 0 ? totalDurasi : 30,
-      porsi: 4,
+     porsi: resep.porsi,
       bahanSections: bahanSections,
       langkah: langkah,
       rating: 4.5,
@@ -122,4 +123,43 @@ Future<void> syncBookmarkState(int idPengguna) async {
       resep.isBookmarked = await db.isResepDibookmark(idResep, idPengguna);
     }
   }
+}
+/// Dipanggil SEKALI dari settings/tombol developer.
+/// Generate embedding untuk setiap resep dari kResepList,
+/// lalu simpan ke kolom `embedding` di Supabase.
+///
+/// Teks yang di-embed: "NamaResep. Bahan: bahan1, bahan2, ..."
+Future<Map<String, int>> generateAndSaveAllEmbeddings() async {
+  final db = Database();
+  int berhasil = 0;
+  int gagal = 0;
+
+  for (final resep in kResepList) {
+    final idResep = int.tryParse(resep.id);
+    if (idResep == null) { gagal++; continue; }
+
+    // Susun teks: nama + semua bahan
+    final semuaBahan = resep.bahanSections
+        .expand((s) => s.items)
+        .map((i) => i.nama)
+        .join(', ');
+    final teks = '${resep.nama}. Bahan: $semuaBahan';
+
+    // Generate embedding via Gemini
+    final embedding = await generateEmbedding(teks);
+    if (embedding == null) { gagal++; continue; }
+
+    // Simpan ke Supabase
+    try {
+      await db.updateEmbeddingResep(idResep, embedding);
+      berhasil++;
+    } catch (_) {
+      gagal++;
+    }
+
+    // Jeda kecil agar tidak throttle Gemini API
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  return {'berhasil': berhasil, 'gagal': gagal};
 }
