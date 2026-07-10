@@ -438,7 +438,7 @@ setState(() {
                 color: _brown)),
         const SizedBox(height: 8),
         Row(
-          children: ['Makanan', 'Camilan', 'Minuman'].map((k) {
+          children: ['Makanan', 'Jajanan', 'Minuman'].map((k) {
             final active = _kategori == k;
             return Expanded(
               child: Padding(
