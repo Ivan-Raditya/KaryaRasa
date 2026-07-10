@@ -1,23 +1,40 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../utils/session_manager.dart';
+import 'edit_profile_screen.dart';
+import 'settings_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
 
   static const _darkBrown = Color(0xFF772F1A);
   static const _brown = Color(0xFF4A2B20);
   static const _gold = Color(0xFFD9AE23);
   static const _creamBg = Color(0xFFFAF6F1);
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+  Color get textColor => isDark ? Colors.white : Colors.black87;
+  Color get secondaryTextColor => isDark ? Colors.grey[400]! : Colors.grey[600]!;
+
   @override
   Widget build(BuildContext context) {
     final session = SessionManager.instance;
-    final nama = session.nama.isNotEmpty ? session.nama : 'Pengguna';
-    final email = session.penggunaLogin?.email ?? '';
+    final pengguna = session.penggunaLogin;
+    final nama = pengguna?.nama ?? 'Pengguna';
+    final email = pengguna?.email ?? '';
+    final role = pengguna?.role ?? 'user';
+    final fotoProfile = pengguna?.fotoProfile;
 
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: Column(
         children: [
           // ── Dark Brown Header Section ──────────────────────────────────
@@ -76,9 +93,9 @@ class ProfileScreen extends StatelessWidget {
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
                       ),
@@ -96,12 +113,20 @@ class ProfileScreen extends StatelessWidget {
                                 color: const Color(0xFFD0C8BE),
                                 shape: BoxShape.circle,
                                 border: Border.all(color: Colors.white, width: 3),
+                                image: fotoProfile != null && fotoProfile.isNotEmpty
+                                    ? DecorationImage(
+                                        image: NetworkImage(fotoProfile),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                               ),
-                              child: const Icon(
-                                Icons.person_rounded,
-                                color: Color(0xFF9E9E9E),
-                                size: 40,
-                              ),
+                              child: (fotoProfile == null || fotoProfile.isEmpty)
+                                  ? const Icon(
+                                      Icons.person_rounded,
+                                      color: Color(0xFF9E9E9E),
+                                      size: 40,
+                                    )
+                                  : null,
                             ),
                             const SizedBox(width: 16),
                             // Name + role
@@ -121,10 +146,10 @@ class ProfileScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    session.penggunaLogin?.role ?? 'user',
+                                    role,
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: Colors.grey[600],
+                                      color: secondaryTextColor,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -145,7 +170,7 @@ class ProfileScreen extends StatelessWidget {
                                   email,
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: Colors.grey[700],
+                                    color: secondaryTextColor,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -167,14 +192,14 @@ class ProfileScreen extends StatelessWidget {
             child: Container(
               margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(20),
                   bottomRight: Radius.circular(20),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
+                    color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.08),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -182,8 +207,12 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const Divider(height: 1, color: Color(0xFFF0EDE8), indent: 16, endIndent: 16),
-                  _menuItem(Icons.edit_rounded, 'Edit Profil', () {}),
+                  Divider(height: 1, color: isDark ? const Color(0xFF333333) : const Color(0xFFF0EDE8), indent: 16, endIndent: 16),
+                  _menuItem(Icons.edit_rounded, 'Edit Profil', () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const EditProfileScreen(),
+                    )).then((_) => setState(() {}));
+                  }),
                   _divider(),
                   _menuItem(Icons.bookmark_rounded, 'Penanda', () {
                     Navigator.of(context).pushNamed('/bookmark');
@@ -191,7 +220,11 @@ class ProfileScreen extends StatelessWidget {
                   _divider(),
                   _menuItem(Icons.person_rounded, 'Akun', () {}),
                   _divider(),
-                  _menuItem(Icons.settings_rounded, 'Pengaturan', () {}),
+                  _menuItem(Icons.settings_rounded, 'Pengaturan', () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const SettingsScreen(),
+                    ));
+                  }),
                   _divider(),
                   _menuItem(Icons.logout_rounded, 'Keluar', () {
                     SessionManager.instance.logout();
@@ -234,15 +267,15 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: Colors.black87, size: 22),
+            Icon(icon, color: textColor, size: 22),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: textColor,
                 ),
               ),
             ),
@@ -266,6 +299,6 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _divider() {
-    return const Divider(height: 1, color: Color(0xFFF0EDE8), indent: 58, endIndent: 20);
+    return Divider(height: 1, color: isDark ? const Color(0xFF333333) : const Color(0xFFF0EDE8), indent: 58, endIndent: 20);
   }
 }

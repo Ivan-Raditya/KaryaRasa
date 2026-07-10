@@ -26,6 +26,13 @@ class _RacikScreenState extends State<RacikScreen> {
   static const _chipBorder = Color(0x4C8DA38B);
   static const _divider    = Color(0x19D5B534);
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+  Color get textColor => isDark ? Colors.white : _brown;
+  Color get secondaryTextColor => isDark ? Colors.grey[400]! : _brown.withValues(alpha: 0.7);
+  Color get searchBgColor => isDark ? const Color(0xFF333333) : const Color(0xFFF2EBE1);
+
   // ── State ──────────────────────────────────────────────────────────────────
   final TextEditingController _inputController = TextEditingController();
   final List<String> _bahanList = [];
@@ -193,7 +200,7 @@ for (final row in pgResult) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -222,7 +229,7 @@ for (final row in pgResult) {
   Widget _buildAppBar() {
     return Container(
       decoration: BoxDecoration(
-        color: _creamBg.withValues(alpha: 0.8),
+        color: isDark ? bgColor : _creamBg.withValues(alpha: 0.8),
         border: const Border(
           bottom: BorderSide(color: _divider, width: 1),
         ),
@@ -236,7 +243,7 @@ for (final row in pgResult) {
               width: 40,
               height: 40,
               decoration: const BoxDecoration(shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_back_rounded, color: _brown),
+              child: Icon(Icons.arrow_back_rounded, color: textColor),
             ),
           ),
           Expanded(
@@ -246,7 +253,7 @@ for (final row in pgResult) {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: _brown,
+                  color: textColor,
                   letterSpacing: -0.45,
                 ),
               ),
@@ -271,7 +278,7 @@ for (final row in pgResult) {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 24,
               fontWeight: FontWeight.w700,
-              color: _brown,
+              color: textColor,
               letterSpacing: -0.60,
             ),
           ),
@@ -283,7 +290,7 @@ for (final row in pgResult) {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: _brown.withValues(alpha: 0.7),
+              color: secondaryTextColor,
               height: 1.43,
             ),
           ),
@@ -293,14 +300,14 @@ for (final row in pgResult) {
           Container(
             height: 56,
             decoration: BoxDecoration(
-              color: const Color(0xFFF2EBE1),
+              color: searchBgColor,
               borderRadius: BorderRadius.circular(48),
               border: Border.all(color: _divider),
             ),
             child: Row(
               children: [
                 const SizedBox(width: 16),
-                const Icon(Icons.kitchen_outlined, color: _brown, size: 20),
+                Icon(Icons.kitchen_outlined, color: textColor, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
@@ -318,7 +325,7 @@ for (final row in pgResult) {
                     ),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
-                      color: _brown,
+                      color: textColor,
                     ),
                   ),
                 ),
@@ -411,7 +418,7 @@ for (final row in pgResult) {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: _brown,
+                  color: textColor,
                 ),
               ),
               if (_hasilList.isNotEmpty)
@@ -560,13 +567,13 @@ class _BahanChip extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: _brown,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : _brown,
             ),
           ),
           const SizedBox(width: 6),
           GestureDetector(
             onTap: onDelete,
-            child: const Icon(Icons.close_rounded, size: 14, color: _brown),
+            child: Icon(Icons.close_rounded, size: 14, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : _brown),
           ),
         ],
       ),
@@ -595,7 +602,7 @@ class _ResepCard extends StatelessWidget {
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0x19D5B534)),
           boxShadow: const [

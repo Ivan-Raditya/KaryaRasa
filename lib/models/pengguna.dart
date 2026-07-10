@@ -10,6 +10,7 @@ class Pengguna {
   final String? fotoProfile;
   final String role; // 'user' atau 'admin'
   final String tglBergabung;
+  final String? uid; // Supabase Auth UUID
 
   Pengguna({
     this.idPengguna,
@@ -23,6 +24,7 @@ class Pengguna {
     this.fotoProfile,
     this.role = 'user',
     required this.tglBergabung,
+    this.uid,
   });
 
   factory Pengguna.fromMap(Map<String, dynamic> map) {
@@ -38,6 +40,7 @@ class Pengguna {
       fotoProfile: map['fotoProfile'] as String?,
       role: map['role'] as String,
       tglBergabung: map['tglBergabung'] as String,
+      uid: map['uid'] as String?,
     );
   }
 
@@ -54,6 +57,7 @@ class Pengguna {
       'fotoProfile': fotoProfile,
       'role': role,
       'tglBergabung': tglBergabung,
+      if (uid != null) 'uid': uid,
     };
   }
 }

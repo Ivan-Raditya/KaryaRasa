@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../data/resep_data.dart';
 import '../database/database.dart';
@@ -24,8 +26,18 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   String _activeCategory = 'Semua';
   String _searchQuery = '';
+  bool _isLoadingMore = false;
+
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+  Color get textColor => isDark ? Colors.white : const Color(0xFF2C1A10);
+  Color get secondaryTextColor => isDark ? Colors.grey[400]! : Colors.grey[600]!;
+  Color get shimmerBase => isDark ? Colors.grey[800]! : Colors.grey[300]!;
+  Color get shimmerHighlight => isDark ? Colors.grey[700]! : Colors.grey[100]!;
 
   @override
   void initState() {
@@ -37,6 +49,21 @@ class _SearchScreenState extends State<SearchScreen> {
       _searchQuery = widget.initialSearchQuery!;
       _searchController.text = widget.initialSearchQuery!;
     }
+    
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        _loadMore();
+      }
+    });
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore) return;
+    setState(() => _isLoadingMore = true);
+    
+    await loadResepFromDatabase(start: kResepList.length, limit: 10, append: true);
+    
+    if (mounted) setState(() => _isLoadingMore = false);
   }
 
   static const _brown = Color(0xFF4A2B20);
@@ -100,13 +127,14 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: Column(
         children: [
             // ── Hero Header ──────────────────────────────────────────────
@@ -173,18 +201,18 @@ Container(
             ),
             // ── Search Bar ───────────────────────────────────────────────
             Container(
-              color: Colors.white,
+              color: cardColor,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Container(
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0EDE8),
+                  color: isDark ? const Color(0xFF333333) : const Color(0xFFF0EDE8),
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: TextField(
                   controller: _searchController,
                   onChanged: (v) => setState(() => _searchQuery = v),
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 14, color: textColor),
                   decoration: InputDecoration(
                     hintText: 'Cari resep, bahan, atau daerah...',
                     hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
@@ -207,7 +235,7 @@ Container(
 
             // ── Category Chips ──────────────────────────────────────────────
             Container(
-              color: Colors.white,
+              color: cardColor,
               height: 50,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
@@ -223,7 +251,7 @@ Container(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
-                        color: active ? _terracotta : const Color(0xFFF0EDE8),
+                        color: active ? _terracotta : (isDark ? const Color(0xFF333333) : const Color(0xFFF0EDE8)),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -231,7 +259,7 @@ Container(
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: active ? Colors.white : _brown,
+                          color: active ? Colors.white : textColor,
                         ),
                       ),
                     ),
@@ -239,7 +267,7 @@ Container(
                 },
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFEEEEEE)),
+            Divider(height: 1, color: isDark ? const Color(0xFF333333) : const Color(0xFFEEEEEE)),
 
             // ── Results ─────────────────────────────────────────────────────
             Expanded(
@@ -255,6 +283,7 @@ Container(
                         _buildEmpty(),
                       ])
                     : CustomScrollView(
+                        controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
                         SliverPadding(
@@ -267,7 +296,7 @@ Container(
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.grey[600],
+                                color: secondaryTextColor,
                               ),
                             ),
                           ),
@@ -287,6 +316,15 @@ Container(
                             ),
                           ),
                         ),
+                        if (_isLoadingMore)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.only(bottom: 24),
+                              child: Center(
+                                child: CircularProgressIndicator(color: _terracotta),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
               ),  // closes RefreshIndicator
@@ -330,7 +368,7 @@ Container(
           const SizedBox(height: 6),
           Text(
             'Coba kata kunci lain',
-            style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 13, color: secondaryTextColor),
           ),
         ],
       ),
@@ -348,11 +386,11 @@ Container(
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -368,10 +406,15 @@ Container(
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
                     child: SizedBox.expand(
-                      child: Image.network(
-                        recipe.imageUrls.first,
+                      child: CachedNetworkImage(
+                        imageUrl: recipe.imageUrls.first,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(color: _brown.withValues(alpha: 0.3)),
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: shimmerBase,
+                          highlightColor: shimmerHighlight,
+                          child: Container(color: cardColor),
+                        ),
+                        errorWidget: (context, url, error) => Container(color: _brown.withValues(alpha: 0.3)),
                       ),
                     ),
                   ),
@@ -405,8 +448,8 @@ Container(
                       child: Container(
                         width: 28,
                         height: 28,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: cardColor,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -428,10 +471,10 @@ Container(
                 children: [
                   Text(
                     recipe.nama,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF2C1A10),
+                      color: textColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -443,14 +486,14 @@ Container(
                       const SizedBox(width: 3),
                       Text(
                         '${recipe.rating}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 11, color: secondaryTextColor, fontWeight: FontWeight.w600),
                       ),
                       const Spacer(),
                       Icon(Icons.access_time_rounded, size: 11, color: Colors.grey[400]),
                       const SizedBox(width: 2),
                       Text(
                         '${recipe.durasiMasak} mnt',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                        style: TextStyle(fontSize: 10, color: secondaryTextColor),
                       ),
                     ],
                   ),
@@ -458,6 +501,23 @@ Container(
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerCard() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Shimmer.fromColors(
+        baseColor: shimmerBase,
+        highlightColor: shimmerHighlight,
+        child: Container(
+          height: 120,
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
     );

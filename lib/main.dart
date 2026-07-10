@@ -13,6 +13,7 @@ import 'screens/article_detail_screen.dart';
 import 'utils/supabase_config.dart';
 import 'screens/kreasi_screen.dart';
 import 'screens/racik_screen.dart';
+import 'utils/preferences_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,9 @@ void main() async {
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
+
+  await PreferencesManager.instance.init();
+
   runApp(const MyApp());
 }
 
@@ -31,16 +35,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'KaryaRasa',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFC6572F)),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
-      initialRoute: '/splash',
-onGenerateRoute: (settings) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: PreferencesManager.instance.themeMode,
+      builder: (context, themeMode, child) {
+        return MaterialApp(
+          title: 'KaryaRasa',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFC6572F),
+              brightness: Brightness.light,
+            ),
+            scaffoldBackgroundColor: const Color(0xFFFDFAF7),
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFC6572F),
+              brightness: Brightness.dark,
+            ),
+            scaffoldBackgroundColor: const Color(0xFF1E1E1E),
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+          ),
+          initialRoute: '/splash',
+          onGenerateRoute: (settings) {
   Widget page;
   switch (settings.name) {
     case '/splash':   page = const SplashScreen(); break;
@@ -62,6 +83,8 @@ onGenerateRoute: (settings) {
     reverseTransitionDuration: Duration.zero,
   );
 },
+        );
+      },
     );
   }
 }

@@ -25,6 +25,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   static const _creamBg = Color(0xFFFDFAF7);
   static const _darkBrown = Color(0xFF2C1A10);
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+  Color get textColor => isDark ? Colors.white : _darkBrown;
+  Color get secondaryTextColor => isDark ? Colors.grey[400]! : Colors.grey[600]!;
+
   List<Artikel> _related = [];
 
   Future<void> _loadRelated() async {
@@ -86,7 +92,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: Stack(
         children: [
           CustomScrollView(
@@ -121,13 +127,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     return SliverAppBar(
       expandedHeight: 280,
       pinned: true,
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       leading: GestureDetector(
         onTap: () => Navigator.of(context).pop(),
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
+            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.9),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.arrow_back_ios_new_rounded,
@@ -142,7 +148,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.9),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -155,10 +161,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           ),
         ),
       ],
-      title: const Text(
+      title: Text(
         'KARYARASA',
         style: TextStyle(
-          color: _brown,
+          color: textColor,
           fontSize: 13,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.5,
@@ -216,10 +222,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           const SizedBox(height: 12),
           Text(
             widget.artikel.judulArtikel,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,
-              color: _darkBrown,
+              color: textColor,
               height: 1.3,
             ),
           ),
@@ -230,7 +236,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3EDE6),
+                  color: isDark ? const Color(0xFF333333) : const Color(0xFFF3EDE6),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -241,9 +247,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                     const SizedBox(width: 4),
                     Text(
                       '${widget.artikel.menitBaca} min baca',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11,
-                          color: _brown,
+                          color: textColor,
                           fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -288,7 +294,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF8F0),
+          color: isDark ? const Color(0xFF333333) : const Color(0xFFFFF8F0),
           borderRadius: BorderRadius.circular(12),
           border: const Border(
             left: BorderSide(color: _terracotta, width: 4),
@@ -296,10 +302,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         ),
         child: Text(
           '"${widget.artikel.excerpt}"',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontStyle: FontStyle.italic,
-            color: _darkBrown,
+            color: textColor,
             height: 1.6,
           ),
         ),
@@ -322,12 +328,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 color: _terracotta,
                 margin: const EdgeInsets.only(right: 10),
               ),
-              const Text(
+              Text(
                 'Ritual Rasa dari Bali',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: _darkBrown,
+                  color: textColor,
                 ),
               ),
             ],
@@ -343,11 +349,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Keunikan Ayam Betutu terletak pada proses pembuatannya yang sangat detail. Ayam dibuat dengan bumbu base genep—campuran komprehensif dari 15 jenis rempah termasuk kencur, jahe, kunyit, dan cabai yang diulek kasar. Proses memasaknya pun bukan sembarang masak; ayam dipijat perlahan agar bumbu meresap hingga ke tulang sebelum dimasak berjam-jam.',
             style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF555555),
+              color: secondaryTextColor,
               height: 1.75,
             ),
           ),
@@ -367,9 +373,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             flex: 3,
             child: Text(
               'Secara tradisional, proses pemanggangan dilakukan di dalam sekam padi panas, menciptakan aroma smoky yang khas yang tidak bisa didapatkan dari teknik modern. Setiap gigitannya menceritakan sejarah panjang masyarakat agraris Bali yang menghargai waktu dan kesabaran dalam mengolah hasil bumi.',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF555555),
+                color: secondaryTextColor,
                 height: 1.75,
               ),
             ),
@@ -427,13 +433,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
   // ── Body Text ───────────────────────────────────────────────────────────────
   Widget _buildBodyText() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Text(
         'Secara tradisional, proses pemanggangan dilakukan di dalam sekam padi panas, menciptakan aroma smoky yang khas yang tidak bisa didapatkan dari teknik modern. Setelah diungkep, ayam dipijat perlahan agar bumbu meresap hingga ke tulang sebelum dimasak berjam-jam.',
         style: TextStyle(
           fontSize: 14,
-          color: Color(0xFF555555),
+          color: secondaryTextColor,
           height: 1.75,
         ),
       ),
@@ -460,13 +466,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             color: _terracotta.withValues(alpha: 0.2),
           ),
         ),
-        child: const Text(
+        child: Text(
           'Bukan sekadar hidangan, Ayam Betutu adalah pengalaman kuliner mendalam dan ikon Bali yang tak boleh dilewatkan.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: _darkBrown,
+            color: textColor,
             height: 1.5,
           ),
         ),
@@ -483,12 +489,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         children: [
           const Divider(color: Color(0xFFEEEEEE)),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Artikel Terkait',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: _darkBrown,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -529,10 +535,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                         const SizedBox(height: 8),
                         Text(
                           rel.judulArtikel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: _darkBrown,
+                            color: textColor,
                             height: 1.3,
                           ),
                           maxLines: 2,
@@ -574,7 +580,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         decoration: BoxDecoration(
-          color: _creamBg,
+          color: bgColor,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
@@ -595,7 +601,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 decoration: BoxDecoration(
                   color: _saved
                       ? _terracotta.withValues(alpha: 0.1)
-                      : Colors.white,
+                      : cardColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _saved

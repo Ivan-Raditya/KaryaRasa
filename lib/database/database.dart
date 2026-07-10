@@ -11,6 +11,7 @@ import '../models/simpan_artikel.dart';
 import '../models/riwayat_kreasi_ai.dart';
 import '../models/hasil_rekomendasi_ai.dart';
 import '../models/progres_memasak.dart';
+import '../models/komentar.dart';
 import '../utils/supabase_config.dart';
 import '../models/like_resep.dart';
 
@@ -63,6 +64,16 @@ class Database {
     return Pengguna.fromMap(result);
   }
 
+  Future<Pengguna?> getPenggunaByUid(String uid) async {
+    final result = await supabase
+        .from('pengguna')
+        .select()
+        .eq('uid', uid)
+        .maybeSingle();
+    if (result == null) return null;
+    return Pengguna.fromMap(result);
+  }
+
     Future<bool> isEmailTerdaftar(String email) async {
     final result = await supabase
         .from('pengguna')
@@ -92,12 +103,30 @@ class Database {
     return result['idResep'] as int;
   }
 
-  Future<List<ResepMakanan>> getAllResep() async {
-    final result = await supabase
+  Future<List<ResepMakanan>> getAllResep({int? start, int? limit}) async {
+    final baseQuery = supabase
         .from('resepmakanan')
         .select()
         .eq('statusResep', 'disetujui');
+        
+    final result = (start != null && limit != null)
+        ? await baseQuery.range(start, start + limit - 1)
+        : await baseQuery;
+        
     return (result as List).map((e) => ResepMakanan.fromMap(e)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getAllResepWithDetails({int? start, int? limit}) async {
+    final baseQuery = supabase
+        .from('resepmakanan')
+        .select('*, bahanmasak(*), langkahmasak(*), likeresep(idPengguna), komentar(skor_rating)')
+        .eq('statusResep', 'disetujui');
+        
+    final result = (start != null && limit != null)
+        ? await baseQuery.range(start, start + limit - 1)
+        : await baseQuery;
+        
+    return List<Map<String, dynamic>>.from(result as List);
   }
 
   Future<List<ResepMakanan>> getResepByKategori(String kategori) async {
@@ -125,6 +154,36 @@ class Database {
         .eq('statusResep', 'disetujui')
         .or('namaResep.ilike.%$keyword%,asalDaerah.ilike.%$keyword%');
     return (result as List).map((e) => ResepMakanan.fromMap(e)).toList();
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // KOMENTAR
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<void> insertKomentar(Komentar komentar) async {
+    await supabase
+        .from('komentar')
+        .insert(komentar.toMap());
+  }
+
+  Future<List<Komentar>> getKomentarByResep(int idResep) async {
+    final result = await supabase
+        .from('komentar')
+        .select('*, pengguna(nama, "fotoProfile")')
+        .eq('idResep', idResep)
+        .order('tglKomentar', ascending: false);
+    return (result as List).map((e) => Komentar.fromMap(e)).toList();
+  }
+
+  Stream<List<Komentar>> getKomentarStream(int idResep) {
+    return supabase
+        .from('komentar')
+        .stream(primaryKey: ['idKomentar'])
+        .eq('idResep', idResep)
+        .asyncMap((_) async {
+          // Stream event triggers a re-fetch to get joined 'pengguna' data
+          return await getKomentarByResep(idResep);
+        });
   }
 
   Future<ResepMakanan?> getResepById(int id) async {

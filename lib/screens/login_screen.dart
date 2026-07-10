@@ -23,6 +23,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFDFAF6);
+  Color get textColor => isDark ? Colors.white : const Color(0xFF2C1A10);
+  Color get fieldBgColor => isDark ? const Color(0xFF333333) : const Color(0xFF975A49);
+  Color get dividerColor => isDark ? const Color(0xFF444444) : const Color(0xFFDDDDDD);
+  Color get socialBgColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+
   bool _obscureText = true;
   bool _isLoading = false;
   final _emailController = TextEditingController();
@@ -146,13 +153,13 @@ class _LoginScreenState extends State<LoginScreen> {
             Expanded(
               flex: 62,
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFDFAF6),
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
                       color: Colors.black26,
                       blurRadius: 16,
@@ -166,10 +173,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Masuk',
                         style: TextStyle(
-                          color: Color(0xFF2C1A10),
+                          color: textColor,
                           fontSize: 26,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.2,
@@ -178,13 +185,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 18),
 
                       // ── Email ──────────────────────────────────────────
-                      const Text(
+                      Text(
                         'ALAMAT EMAIL',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.2,
-                          color: Colors.black87,
+                          color: isDark ? Colors.grey[400] : Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -194,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: Colors.white, fontSize: 14),
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: const Color(0xFF975A49),
+                          fillColor: fieldBgColor,
                           prefixIcon: const Icon(Icons.email_outlined,
                               color: Colors.white70, size: 20),
                           hintText: 'email@contoh.com',
@@ -211,13 +218,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 14),
 
                       // ── Password ───────────────────────────────────────
-                      const Text(
+                      Text(
                         'KATA SANDI',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.2,
-                          color: Colors.black87,
+                          color: isDark ? Colors.grey[400] : Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -227,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: Colors.white, fontSize: 14),
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: const Color(0xFF975A49),
+                          fillColor: fieldBgColor,
                           prefixIcon: const Icon(Icons.lock_outline_rounded,
                               color: Colors.white70, size: 20),
                           suffixIcon: IconButton(
@@ -306,9 +313,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       // ── Divider ────────────────────────────────────────
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                               child: Divider(
-                                  color: Color(0xFFDDDDDD), thickness: 1)),
+                                  color: dividerColor, thickness: 1)),
                           Padding(
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 12),
@@ -321,9 +328,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   letterSpacing: 0.8),
                             ),
                           ),
-                          const Expanded(
+                          Expanded(
                               child: Divider(
-                                  color: Color(0xFFDDDDDD), thickness: 1)),
+                                  color: dividerColor, thickness: 1)),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -336,6 +343,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               label: 'Google',
                               iconWidget: _GoogleIcon(),
                               onPressed: () {},
+                              bgColor: socialBgColor,
+                              textColor: textColor,
+                              borderColor: dividerColor,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -345,6 +355,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               iconWidget: const Icon(Icons.facebook_rounded,
                                   color: Color(0xFF1877F2), size: 22),
                               onPressed: () {},
+                              bgColor: socialBgColor,
+                              textColor: textColor,
+                              borderColor: dividerColor,
                             ),
                           ),
                         ],
@@ -389,11 +402,17 @@ class _SocialButton extends StatelessWidget {
   final String label;
   final Widget iconWidget;
   final VoidCallback onPressed;
+  final Color bgColor;
+  final Color textColor;
+  final Color borderColor;
 
   const _SocialButton({
     required this.label,
     required this.iconWidget,
     required this.onPressed,
+    required this.bgColor,
+    required this.textColor,
+    required this.borderColor,
   });
 
   @override
@@ -402,9 +421,9 @@ class _SocialButton extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        side: const BorderSide(color: Color(0xFFDDDDDD)),
+        side: BorderSide(color: borderColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -412,8 +431,8 @@ class _SocialButton extends StatelessWidget {
           iconWidget,
           const SizedBox(width: 8),
           Text(label,
-              style: const TextStyle(
-                  color: Colors.black87,
+              style: TextStyle(
+                  color: textColor,
                   fontWeight: FontWeight.w600,
                   fontSize: 13)),
         ],

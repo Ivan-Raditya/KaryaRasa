@@ -26,11 +26,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _pekerjaanController = TextEditingController();
 
   static const _fieldColor = Color(0xFFEEC170);
-  static const _fieldFillColor = Color(0x80EEC170);
-  static const _labelStyle = TextStyle(
+
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFDFAF7);
+  Color get fieldBgColor => isDark ? const Color(0xFF333333) : const Color(0x80EEC170);
+  Color get textColor => isDark ? Colors.white : Colors.black87;
+  Color get hintColor => isDark ? Colors.grey[400]! : Colors.black54;
+  Color get iconColor => isDark ? Colors.grey[400]! : Colors.black54;
+
+  TextStyle get _labelStyle => TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
-    color: Colors.black87,
+    color: textColor,
   );
 
   @override
@@ -149,13 +156,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(
-        color: Colors.black54,
+      hintStyle: TextStyle(
+        color: hintColor,
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       filled: true,
-      fillColor: _fieldFillColor,
+      fillColor: fieldBgColor,
       prefixIcon: prefix,
       suffixIcon: suffix,
       border: OutlineInputBorder(
@@ -193,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       obscureText: obscure,
       keyboardType: keyboard,
       inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textColor),
       decoration: _fieldDecoration(hint: hint, prefix: prefix, suffix: suffix),
     );
   }
@@ -233,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFAF7),
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -246,7 +253,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Material(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                       shape: const CircleBorder(),
                       elevation: 2,
                       shadowColor: Colors.black12,
@@ -255,11 +262,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onTap: () {
                           Navigator.of(context).pushReplacementNamed('/login');
                         },
-                        child: const Padding(
-                          padding: EdgeInsets.all(8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
                           child: Icon(
                             Icons.arrow_back,
-                            color: Color(0xFF172033),
+                            color: textColor,
                             size: 20,
                           ),
                         ),
@@ -320,7 +327,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _obscurePassword
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: Colors.black54,
+                          color: iconColor,
                           size: 20,
                         ),
                         onPressed: () => setState(
@@ -341,7 +348,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _obscureConfirmPassword
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: Colors.black54,
+                          color: iconColor,
                           size: 20,
                         ),
                         onPressed: () => setState(
@@ -356,7 +363,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _buildLabel('Jenis Kelamin'),
                     Container(
                       decoration: BoxDecoration(
-                        color: _fieldFillColor,
+                        color: fieldBgColor,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -364,14 +371,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: DropdownButton<String>(
                           value: _selectedGender,
                           isExpanded: true,
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            color: Colors.black54,
+                            color: iconColor,
                           ),
-                          style: const TextStyle(
+                          dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black87,
+                            color: textColor,
                           ),
                           items: ['Laki-laki', 'Perempuan']
                               .map(
@@ -395,18 +403,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onTap: _pickDate,
                       child: AbsorbPointer(
                         child: TextField(
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
+                            color: textColor,
                           ),
                           controller: TextEditingController(
                             text: _formatDateDisplay(_selectedDate),
                           ),
                           decoration: _fieldDecoration(
                             hint: '12/12/2004',
-                            prefix: const Icon(
+                            prefix: Icon(
                               Icons.date_range_rounded,
-                              color: Colors.black54,
+                              color: iconColor,
                               size: 20,
                             ),
                           ),
@@ -439,14 +448,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Saya menyetujui Syarat dan Ketentuan serta Kebijakan Privasi yang berlaku.',
                             style: TextStyle(
                               fontSize: 13,
                               height: 1.5,
                               fontWeight: FontWeight.w500,
-                              color: Colors.black87,
+                              color: textColor,
                             ),
                           ),
                         ),

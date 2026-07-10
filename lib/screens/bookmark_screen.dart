@@ -25,6 +25,11 @@ class _BookmarkScreenState extends State<BookmarkScreen>
   static const _creamBg = Color(0xFFFDFAF7);
   static const _heroBg = Color(0xFF772F1A);
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+  Color get textColor => isDark ? Colors.white : const Color(0xFF2C1A10);
+
   List<ResepData> get _savedRecipes =>
       kResepList.where((r) => r.isBookmarked).toList();
 
@@ -84,7 +89,7 @@ class _BookmarkScreenState extends State<BookmarkScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: Column(
         children: [
           // ── Hero Header ─────────────────────────────────────────────────
@@ -152,7 +157,7 @@ Container(
 
           // ── Tab Bar (hanya Resep & Artikel) ─────────────────────────────
           Container(
-            color: Colors.white,
+            color: bgColor,
             child: TabBar(
               controller: _tabController,
               labelColor: _terracotta,
@@ -196,12 +201,12 @@ Container(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Resep Tersimpan',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF2C1A10),
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 14),
@@ -303,8 +308,8 @@ Container(
                     child: Container(
                       width: 30,
                       height: 30,
-                      decoration: const BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C) : Colors.white, shape: BoxShape.circle),
                       child: Icon(
                         recipe.isBookmarked
                             ? Icons.bookmark_rounded
@@ -321,10 +326,10 @@ Container(
           const SizedBox(height: 7),
           Text(
             recipe.nama,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF2C1A10)),
+                color: textColor),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -365,12 +370,12 @@ Container(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Artikel Tersimpan',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF2C1A10),
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 14),
@@ -419,7 +424,7 @@ Container(
       onTap: () {},
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -462,10 +467,10 @@ Container(
                     const SizedBox(height: 4),
                     Text(
                       artikel.judulArtikel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF2C1A10),
+                        color: textColor,
                         height: 1.3,
                       ),
                       maxLines: 2,

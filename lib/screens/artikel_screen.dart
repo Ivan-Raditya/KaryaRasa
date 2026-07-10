@@ -27,6 +27,9 @@ class _ArtikelScreenState extends State<ArtikelScreen>
   static const _creamBg = Color(0xFFFDFAF7);
   static const _heroBg = Color(0xFF772F1A);
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+
   @override
   void initState() {
     super.initState();
@@ -71,7 +74,7 @@ class _ArtikelScreenState extends State<ArtikelScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: Column(
           children: [
             _buildAppBar(),
@@ -167,7 +170,7 @@ Container(
       return const Center(child: CircularProgressIndicator(color: _terracotta));
     }
     if (_artikelList.isEmpty) {
-      return const Center(child: Text('Belum ada artikel.'));
+      return Center(child: Text('Belum ada artikel.', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : _brown)));
     }
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -326,8 +329,8 @@ class _FeaturedArtikelCard extends StatelessWidget {
                   child: Container(
                     width: 36,
                     height: 36,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C) : Colors.white,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -435,7 +438,7 @@ class _ArtikelListCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -504,10 +507,10 @@ class _ArtikelListCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       artikel.judulArtikel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF2C1A10),
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF2C1A10),
                         height: 1.3,
                       ),
                       maxLines: 2,

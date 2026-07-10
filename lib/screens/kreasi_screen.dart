@@ -69,6 +69,12 @@ class _KreasiScreenState extends State<KreasiScreen> {
   final List<_BahanItem> _bahanList = [_BahanItem()];
   final List<_LangkahItem> _langkahList = [_LangkahItem()];
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : _cardBg;
+  Color get textColor => isDark ? Colors.white : _brown;
+  Color get secondaryTextColor => isDark ? Colors.grey[400]! : _brown.withOpacity(0.6);
+
   @override
   void dispose() {
     _namaCtrl.dispose();
@@ -247,7 +253,7 @@ setState(() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       appBar: _buildAppBar(),
       body: Form(
         key: _formKey,
@@ -284,7 +290,7 @@ setState(() {
         style: GoogleFonts.playfairDisplay(
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: _brown,
+          color: textColor,
         ),
       ),
       centerTitle: true,
@@ -305,7 +311,7 @@ setState(() {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.4,
-          color: _brown.withOpacity(0.6),
+          color: secondaryTextColor,
         ),
       ),
     );
@@ -435,7 +441,7 @@ setState(() {
             style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: _brown)),
+                color: textColor)),
         const SizedBox(height: 8),
         Row(
           children: ['Makanan', 'Jajanan', 'Minuman'].map((k) {
@@ -449,7 +455,7 @@ setState(() {
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: active ? _gold : _cardBg,
+                      color: active ? _gold : cardColor,
                       borderRadius: BorderRadius.circular(50),
                       border: Border.all(
                         color: active ? _gold : Colors.grey.shade200,
@@ -469,7 +475,7 @@ setState(() {
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: active ? Colors.white : _brown.withOpacity(0.6),
+                        color: active ? Colors.white : secondaryTextColor,
                       ),
                     ),
                   ),
@@ -768,7 +774,7 @@ setState(() {
               style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: _brown)),
+                  color: textColor)),
           const SizedBox(height: 6),
         ],
         TextFormField(
@@ -776,13 +782,13 @@ setState(() {
           maxLines: maxLines,
           validator: validator,
            keyboardType: keyboardType,
-          style: GoogleFonts.inter(fontSize: 13, color: _brown),
+          style: GoogleFonts.inter(fontSize: 13, color: textColor),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.inter(
-                fontSize: 13, color: _brown.withOpacity(0.3)),
+                fontSize: 13, color: secondaryTextColor),
             filled: true,
-            fillColor: _cardBg,
+            fillColor: cardColor,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16,
               vertical: compact ? 12 : 16,

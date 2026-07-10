@@ -27,10 +27,12 @@ class ResepData {
   final List<String> imageUrls;
   final List<BahanSection> bahanSections;
   final List<String> langkah;
+  final List<String> alatMasak;
   final String videoThumbnail;
   final int durasiMasak;
   final int porsi;
   final double rating;
+  final int likeCount; // ← field baru
   bool isBookmarked;
 
   ResepData({
@@ -42,10 +44,12 @@ class ResepData {
     required this.imageUrls,
     required this.bahanSections,
     required this.langkah,
+    this.alatMasak = const [],
     required this.videoThumbnail,
     required this.durasiMasak,
     required this.porsi,
     this.rating = 4.5,
+    this.likeCount = 0,
     this.isBookmarked = false,
   });
 }
@@ -56,62 +60,82 @@ class ResepData {
 
 List<ResepData> kResepList = [];
 
-/// Dipanggil di splash screen — load semua resep dari database
-Future<void> loadResepFromDatabase() async {
+/// Dipanggil di splash screen atau pagination — load resep dari database
+Future<void> loadResepFromDatabase({int start = 0, int limit = 10, bool append = false}) async {
   final db = Database();
-  final resepList = await db.getAllResep();
+  // Gunakan fungsi join untuk mencegah N+1 Query
+  final resepList = await db.getAllResepWithDetails(start: start, limit: limit);
 
   final List<ResepData> hasil = [];
 
   for (final resep in resepList) {
-    final idResep = resep.idResep!;
+    final idResep = resep['idResep'] as int;
 
-    // Ambil bahan
-    final bahanList = await db.getBahanByResep(idResep);
-    final bahanItems = bahanList
-        .map((b) => BahanItem(nama: b.namaBahan, jumlah: b.jumlah))
+    // 1. Bahan Masak
+    final bahanData = (resep['bahanmasak'] as List?) ?? [];
+    final bahanItems = bahanData
+        .map((b) => BahanItem(nama: b['namaBahan'] ?? '', jumlah: b['jumlah'] ?? ''))
         .toList();
-
     final bahanSections = bahanItems.isNotEmpty
         ? [BahanSection(judul: 'Bahan-Bahan', items: bahanItems)]
         : <BahanSection>[];
 
-    // Ambil langkah masak
-    final langkahList = await db.getLangkahByResep(idResep);
-    final langkah = langkahList
-        .map((l) => l.deskripsiLangkah)
-        .toList();
+    // 2. Langkah Masak
+    final langkahData = (resep['langkahmasak'] as List?) ?? [];
+    // Urutkan langkah berdasarkan nomor urut (jika tidak otomatis dari db)
+    langkahData.sort((a, b) => (a['nomorUrut'] as int? ?? 0).compareTo(b['nomorUrut'] as int? ?? 0));
+    final langkah = langkahData.map((l) => l['deskripsiLangkah'] as String).toList();
 
-    // Hitung total durasi
-    final totalDurasi =
-        langkahList.fold<int>(0, (sum, l) => sum + (l.durasi ?? 0));
+    // 3. Alat Masak
+    final alatData = (resep['alatmasak'] as List?) ?? [];
+    final alat = alatData.map((a) => a['namaAlat'] as String).toList();
 
-    // Parse URL foto (bisa lebih dari 1, dipisah koma)
-    final fotoResep = resep.fotoResep ?? '';
+    // 4. Hitung Durasi
+    final totalDurasi = langkahData.fold<int>(0, (sum, l) => sum + (l['durasi'] as int? ?? 0));
+
+    // 5. Parse Foto
+    final fotoResep = (resep['fotoResep'] as String?) ?? '';
     final imageUrls = fotoResep.isNotEmpty
         ? fotoResep.split(',').map((u) => u.trim()).toList()
-        : [
-            'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80'
-          ];
+        : ['https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80'];
+
+    // 6. Jumlah Like
+    final likesData = (resep['likeresep'] as List?) ?? [];
+    final jumlahLike = likesData.length;
+
+    // 7. Kalkulasi Rating Rata-Rata
+    final komentarData = (resep['komentar'] as List?) ?? [];
+    double avgRating = 0.0;
+    if (komentarData.isNotEmpty) {
+      final totalSkor = komentarData.fold<int>(0, (sum, k) => sum + (k['skor_rating'] as int? ?? 5));
+      avgRating = totalSkor / komentarData.length;
+    }
 
     hasil.add(ResepData(
       id: idResep.toString(),
-      nama: resep.namaResep,
-      daerah: resep.asalDaerah,
-      kategori: resep.kategoriResep, // ← ambil dari DB
-      sejarahSingkat: resep.deskripsiResep,
+      nama: resep['namaResep'] ?? 'Resep Tanpa Nama',
+      daerah: resep['asalDaerah'] ?? '-',
+      kategori: resep['kategoriResep'] ?? 'Makanan',
+      sejarahSingkat: resep['deskripsiResep'] ?? '',
       imageUrls: imageUrls,
       videoThumbnail: imageUrls.first,
       durasiMasak: totalDurasi > 0 ? totalDurasi : 30,
-     porsi: resep.porsi,
+      porsi: resep['porsi'] ?? 1,
       bahanSections: bahanSections,
       langkah: langkah,
-      rating: 4.5,
+      alatMasak: alat,
+      rating: avgRating > 0 ? avgRating : 0.0,
+
+      likeCount: jumlahLike,
       isBookmarked: false,
     ));
   }
 
-  kResepList = hasil;
+  if (append) {
+    kResepList.addAll(hasil);
+  } else {
+    kResepList = hasil;
+  }
 }
 
 /// Sync status bookmark dari database untuk pengguna yang login

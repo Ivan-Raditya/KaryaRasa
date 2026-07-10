@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../data/resep_data.dart';
 import '../utils/session_manager.dart';
 import 'resep_detail_screen.dart';
 import 'search_screen.dart';
 import 'kreasi_screen.dart';
+import '../database/database.dart';
+import '../models/artikel.dart';
+import 'article_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _navIndex = 0;
+  final _scrollController = ScrollController();
+  bool _isLoadingMore = false;
 
   static const _brown = Color(0xFF4A2B20);
   static const _terracotta = Color(0xFFC6572F);
@@ -24,10 +31,45 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _creamBg = Color(0xFFFDFAF7);
   static const _heroBg = Color(0xFF772F1A);
 
+  List<Artikel> _artikelList = [];
+
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+  Color get textColor => isDark ? Colors.white : const Color(0xFF2C1A10);
+  Color get secondaryTextColor => isDark ? Colors.grey[400]! : Colors.grey[600]!;
+  Color get shimmerBase => isDark ? Colors.grey[800]! : Colors.grey[300]!;
+  Color get shimmerHighlight => isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
   @override
   void initState() {
     super.initState();
-    _syncBookmarks();
+    _loadData();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        _loadMore();
+      }
+    });
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore) return;
+    setState(() => _isLoadingMore = true);
+    await loadResepFromDatabase(start: kResepList.length, limit: 10, append: true);
+    if (mounted) setState(() => _isLoadingMore = false);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    final db = Database();
+    final artikels = await db.getAllArtikel();
+    if (mounted) setState(() => _artikelList = artikels);
+    await _syncBookmarks();
   }
 
   Future<void> _syncBookmarks() async {
@@ -54,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -64,21 +106,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: _terracotta,
                 onRefresh: () async {
                   await loadResepFromDatabase();
-                  await _syncBookmarks();
+                  await _loadData();
                 },
                 child: SingleChildScrollView(
+                  controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeroBanner(),
-                      const SizedBox(height: 20),
-                      _buildWarisanAndDaerah(),
-                      const SizedBox(height: 20),
-                      _buildRekomendasi(),
-                      const SizedBox(height: 20),
-                      _buildBelajarSejarah(),
+                      if (kResepList.isEmpty) ...[
+                        _buildShimmerPlaceholder(),
+                        _buildShimmerPlaceholder(),
+                        _buildShimmerPlaceholder(),
+                      ] else ...[
+                        _buildHeroBanner(),
+                        const SizedBox(height: 20),
+                        _buildWarisanAndDaerah(),
+                        const SizedBox(height: 20),
+                        _buildRekomendasi(),
+                        const SizedBox(height: 20),
+                        _buildBelajarSejarah(),
+                      ],
                       const SizedBox(height: 24),
+                      if (_isLoadingMore)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 24),
+                          child: Center(child: CircularProgressIndicator(color: _terracotta)),
+                        ),
                     ],
                   ),  // closes Column
                 ),  // closes SingleChildScrollView
@@ -100,7 +154,24 @@ class _HomeScreenState extends State<HomeScreen> {
         style: GoogleFonts.playfairDisplay(
           fontSize: 22,
           fontWeight: FontWeight.w800,
-          color: const Color(0xFF2C1A10),
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerPlaceholder() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          height: 210,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
       ),
     );
@@ -128,11 +199,15 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Background — gambar pertama dari resep hari ini
               if (resepHariIni != null && resepHariIni.imageUrls.isNotEmpty)
-                Image.network(
-                  resepHariIni.imageUrls.first,
+                CachedNetworkImage(
+                  imageUrl: resepHariIni.imageUrls.first,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      Container(color: _brown),
+                  placeholder: (context, url) => Shimmer.fromColors(
+                    baseColor: Colors.grey[300]!,
+                    highlightColor: Colors.grey[100]!,
+                    child: Container(color: Colors.white),
+                  ),
+                  errorWidget: (context, url, error) => Container(color: _brown),
                 )
               else
                 Container(color: _brown),
@@ -234,10 +309,15 @@ class _HomeScreenState extends State<HomeScreen> {
       child: SizedBox(
         width: 68,
         height: 68,
-        child: Image.network(
-          url,
+        child: CachedNetworkImage(
+          imageUrl: url,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: _brown.withValues(alpha: 0.5)),
+          placeholder: (context, url) => Shimmer.fromColors(
+            baseColor: shimmerBase,
+            highlightColor: shimmerHighlight,
+            child: Container(color: cardColor),
+          ),
+          errorWidget: (context, url, error) => Container(color: _brown.withValues(alpha: 0.5)),
         ),
       ),
     );
@@ -256,12 +336,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Warisan Rasa',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF2C1A10),
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -304,12 +384,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Jelajahi Daerah',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF2C1A10),
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -339,10 +419,11 @@ class _HomeScreenState extends State<HomeScreen> {
             child: SizedBox(
               width: 32,
               height: 32,
-              child: Image.network(
-                imgUrl,
+              child: CachedNetworkImage(
+                imageUrl: imgUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: (context, url) => Container(color: textColor.withValues(alpha: 0.1)),
+                errorWidget: (context, url, error) => Container(
                   color: textColor.withValues(alpha: 0.2),
                   child: Icon(Icons.restaurant, color: textColor, size: 16),
                 ),
@@ -389,9 +470,9 @@ class _HomeScreenState extends State<HomeScreen> {
           )),
           child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFEEEEEE)),
+            border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFEEEEEE)),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -400,10 +481,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 4),
               Text(
                 item['label'] as String,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF2C1A10),
+                  color: textColor,
                   letterSpacing: 0.4,
                 ),
                 textAlign: TextAlign.center,
@@ -426,12 +507,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Rekomendasi Minggu Ini',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF2C1A10),
+                  color: textColor,
                 ),
               ),
               Row(
@@ -457,8 +538,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   resep.nama,
                   resep.sejarahSingkat,
                   resep.imageUrls.first,
-                  5,
-                  120, // dummy review count
+                  resep.rating.round() > 0 ? resep.rating.round() : 5, // Fallback to 5 visually if no comments exist
+                  resep.likeCount,
                   resep: resep,
                 ),
               );
@@ -474,9 +555,9 @@ class _HomeScreenState extends State<HomeScreen> {
       width: 28,
       height: 28,
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFDDDDDD)),
+        border: Border.all(color: isDark ? const Color(0xFF444444) : const Color(0xFFDDDDDD)),
         borderRadius: BorderRadius.circular(8),
-        color: Colors.white,
+        color: cardColor,
       ),
       child: Icon(icon, size: 18, color: _brown),
     );
@@ -501,11 +582,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
       width: 200,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -522,10 +603,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SizedBox(
                   height: 140,
                   width: double.infinity,
-                  child: Image.network(
-                    imgUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: imgUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: _brown.withValues(alpha: 0.3)),
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: shimmerBase,
+                      highlightColor: shimmerHighlight,
+                      child: Container(color: cardColor),
+                    ),
+                    errorWidget: (context, url, error) => Container(color: _brown.withValues(alpha: 0.3)),
                   ),
                 ),
               ),
@@ -539,10 +625,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF2C1A10),
+                    color: textColor,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -561,14 +647,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 4),
                     Text(
                       '($reviewCount)',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 10, color: secondaryTextColor),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
                   desc,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600], height: 1.4),
+                  style: TextStyle(fontSize: 11, color: secondaryTextColor, height: 1.4),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -588,32 +674,25 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Belajar Sejarah Kuliner',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF2C1A10),
+              color: textColor,
             ),
           ),
           const SizedBox(height: 12),
-          _sejarahCard(
-            'Ayam Betutu',
-            "Asal-usul bumbu 'Base Genep' yang dibawa oleh pemuka agama ke pulau Dewata.",
-            'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=400&q=80',
-          ),
-          const SizedBox(height: 12),
-          _sejarahCard(
-            'Nasi Liwet',
-            "Nasi gurih khas Solo yang konon sudah ada sejak masa Kerajaan Mataram Islam.",
-            'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=400&q=80',
-          ),
+          ..._artikelList.take(3).map((a) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _sejarahCard(a),
+              )),
         ],
       ),
     );
   }
 
-  Widget _sejarahCard(String title, String desc, String imgUrl) {
+  Widget _sejarahCard(Artikel artikel) {
     return Container(
       height: 120,
       decoration: BoxDecoration(
@@ -630,29 +709,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    artikel.judulArtikel,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Flexible(
                     child: Text(
-                      desc,
+                      artikel.excerpt,
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 10,
                         height: 1.35,
                       ),
-                      maxLines: 3,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const Spacer(),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pushNamed('/artikel'),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ArticleDetailScreen(artikel: artikel),
+                    )),
                     child: Row(
                       children: [
                         const Text(
@@ -680,7 +763,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: SizedBox(
                 height: double.infinity,
                 child: Image.network(
-                  imgUrl,
+                  artikel.fotoArtikel ?? '',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: _brown.withValues(alpha: 0.5),

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
+import 'cooking_mode_screen.dart';
 import '../data/resep_data.dart';
 import '../database/database.dart';
 import '../models/bookmark.dart';
 import '../models/koleksi_bookmark.dart';
+import '../models/komentar.dart';
 import '../models/langkah_masak.dart';
 import '../utils/session_manager.dart';
 import '../models/like_resep.dart';
@@ -27,17 +31,34 @@ int _bookmarkCount = 0;
   List<LangkahMasak> _langkahList = [];
   bool _langkahLoading = true;
 
+  final _komentarController = TextEditingController();
+  int _komentarRating = 5;
+
   static const _brown = Color(0xFF4A2B20);
   static const _terracotta = Color(0xFFC6572F);
   static const _creamBg = Color(0xFFFDFAF7);
   static const _darkBrown = Color(0xFF2C1A10);
+
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get bgColor => isDark ? const Color(0xFF1E1E1E) : _creamBg;
+  Color get cardColor => isDark ? const Color(0xFF2C2C2C) : Colors.white;
+  Color get textColor => isDark ? Colors.white : _darkBrown;
+  Color get secondaryTextColor => isDark ? Colors.grey[400]! : Colors.grey[600]!;
+  Color get shimmerBase => isDark ? Colors.grey[800]! : Colors.grey[300]!;
+  Color get shimmerHighlight => isDark ? Colors.grey[700]! : Colors.grey[100]!;
 
   @override
   void initState() {
     super.initState();
     _bookmarked = widget.resep.isBookmarked;
     _loadLangkah();
-     _loadLikeState();
+    _loadLikeState();
+  }
+
+  @override
+  void dispose() {
+    _komentarController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadLangkah() async {
@@ -129,10 +150,47 @@ Future<void> _toggleLike() async {
   }
 }
 
+
+
+Future<void> _postKomentar() async {
+  final isi = _komentarController.text.trim();
+  if (isi.isEmpty) return;
+
+  final idPengguna = SessionManager.instance.idPengguna;
+  final idResep = int.tryParse(widget.resep.id);
+
+  if (idPengguna == null || idResep == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Silakan login untuk berkomentar')),
+    );
+    return;
+  }
+
+  final komentar = Komentar(
+    idResep: idResep,
+    idPengguna: idPengguna,
+    isiKomentar: isi,
+    skorRating: _komentarRating,
+  );
+
+  try {
+    await Database().insertKomentar(komentar);
+    _komentarController.clear();
+    setState(() => _komentarRating = 5);
+    FocusScope.of(context).unfocus(); // dismiss keyboard
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim komentar: $e')),
+      );
+    }
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _creamBg,
+      backgroundColor: bgColor,
       body: Stack(
         children: [
           Column(
@@ -147,9 +205,11 @@ Future<void> _toggleLike() async {
                     children: [
                       _buildTitleSection(),
                       _buildSejarahSection(),
+                      _buildAlatMasakSection(),
                       _buildLangkahSlider(),
                       _buildBahanSection(),
-                      const SizedBox(height: 32),
+                      _buildKomentarSection(),
+                      const SizedBox(height: 100), // Spasi ekstra untuk Floating Button
                     ],
                   ),
                 ),
@@ -158,7 +218,63 @@ Future<void> _toggleLike() async {
           ),
           // ── Top App Bar (floating) ─────────────────────────────────
           _buildTopBar(),
+          // ── Mulai Memasak Button (floating bottom) ─────────────────
+          _buildMulaiMemasakButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMulaiMemasakButton() {
+    return Positioned(
+      bottom: 24,
+      left: 20,
+      right: 20,
+      child: GestureDetector(
+        onTap: () {
+          if (widget.resep.langkah.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Tidak ada langkah memasak.')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CookingModeScreen(langkah: widget.resep.langkah),
+            ),
+          );
+        },
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: _terracotta,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: _terracotta.withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Mulai Memasak',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -173,11 +289,16 @@ Future<void> _toggleLike() async {
           PageView.builder(
             itemCount: images.length,
             onPageChanged: (i) => setState(() => _currentImageIndex = i),
-            itemBuilder: (_, i) => Image.network(
-              images[i],
+            itemBuilder: (_, i) => CachedNetworkImage(
+              imageUrl: images[i],
               fit: BoxFit.cover,
               width: double.infinity,
-              errorBuilder: (_, __, ___) => Container(color: _brown),
+              placeholder: (context, url) => Shimmer.fromColors(
+                baseColor: shimmerBase,
+                highlightColor: shimmerHighlight,
+                child: Container(color: cardColor),
+              ),
+              errorWidget: (context, url, error) => Container(color: _brown),
             ),
           ),
           // Page indicator dots
@@ -303,10 +424,10 @@ Future<void> _toggleLike() async {
         children: [
           Text(
             widget.resep.nama,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w900,
-              color: _darkBrown,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -399,12 +520,12 @@ const SizedBox(height: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Sejarah Singkat',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: _darkBrown,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -422,6 +543,58 @@ const SizedBox(height: 16),
     );
   }
 
+  // ── Alat Masak Section ───────────────────────────────────────────────────────
+  Widget _buildAlatMasakSection() {
+    if (widget.resep.alatMasak.isEmpty) return const SizedBox();
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Alat Masak',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.resep.alatMasak.map((alat) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.kitchen_outlined, size: 16, color: _terracotta),
+                    const SizedBox(width: 6),
+                    Text(
+                      alat,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: textColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Langkah Slider (Horizontal) ─────────────────────────────────────────────
   Widget _buildLangkahSlider() {
     return Padding(
@@ -429,14 +602,14 @@ const SizedBox(height: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Text(
               'Langkah Memasak',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: _darkBrown,
+                color: textColor,
               ),
             ),
           ),
@@ -482,7 +655,7 @@ const SizedBox(height: 16),
       width: 180,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -500,12 +673,17 @@ const SizedBox(height: 16),
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(16)),
             child: hasFoto
-                ? Image.network(
-                    langkah.fotoLangkah!,
+                ? CachedNetworkImage(
+                    imageUrl: langkah.fotoLangkah!,
                     height: 110,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _langkahFotoPlaceholder(),
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: Colors.grey[300]!,
+                      highlightColor: Colors.grey[100]!,
+                      child: Container(color: cardColor, height: 110),
+                    ),
+                    errorWidget: (context, url, error) => _langkahFotoPlaceholder(),
                   )
                 : _langkahFotoPlaceholder(),
           ),
@@ -525,8 +703,8 @@ const SizedBox(height: 16),
                     ),
                     child: Text(
                       'Langkah ${langkah.nomorUrut}',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: cardColor,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
@@ -574,12 +752,12 @@ const SizedBox(height: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Bahan-Bahan',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: _darkBrown,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -607,10 +785,10 @@ const SizedBox(height: 16),
                             const SizedBox(width: 10),
                             Text(
                               '${item.jumlah} ',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: _darkBrown,
+                                color: textColor,
                               ),
                             ),
                             Expanded(
@@ -630,6 +808,183 @@ const SizedBox(height: 16),
             );
           }),
           const Divider(color: Color(0xFFEEEEEE)),
+        ],
+      ),
+    );
+  }
+
+  // ── Komentar Section ─────────────────────────────────────────────────────────
+  Widget _buildKomentarSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Komentar & Rating',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Bintang Rating
+          Row(
+            children: [
+              Text('Berikan Rating:', style: TextStyle(fontSize: 13, color: textColor, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+              Row(
+                children: List.generate(5, (index) {
+                  return GestureDetector(
+                    onTap: () => setState(() => _komentarRating = index + 1),
+                    child: Icon(
+                      index < _komentarRating ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: Colors.amber,
+                      size: 24,
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Input Komentar
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _komentarController,
+                  decoration: InputDecoration(
+                    hintText: 'Tulis komentar...',
+                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: _terracotta, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: _postKomentar,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: _terracotta,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.send_rounded, color: cardColor, size: 20),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // List Komentar (Real-time Stream)
+          StreamBuilder<List<Komentar>>(
+            stream: Database().getKomentarStream(int.tryParse(widget.resep.id) ?? 0),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: _terracotta));
+              }
+              if (snapshot.hasError) {
+                return const Center(child: Text('Gagal memuat komentar'));
+              }
+
+              final kList = snapshot.data ?? [];
+              
+              if (kList.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      'Belum ada komentar.\nJadilah yang pertama berkomentar!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[500], height: 1.5),
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: kList.length,
+                separatorBuilder: (_, __) => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(color: Color(0xFFEEEEEE), height: 1),
+                ),
+                itemBuilder: (ctx, i) {
+                  final k = kList[i];
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Avatar
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: const Color(0xFFF3EDE6),
+                        child: k.fotoProfile == null || k.fotoProfile!.isEmpty
+                            ? const Icon(Icons.person, color: _brown, size: 20)
+                            : null,
+                        backgroundImage: k.fotoProfile != null && k.fotoProfile!.isNotEmpty
+                            ? CachedNetworkImageProvider(k.fotoProfile!)
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      // Konten
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    k.namaPengguna ?? 'Pengguna',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                ),
+                                Row(
+                                  children: List.generate(5, (starIndex) {
+                                    return Icon(
+                                      starIndex < k.skorRating ? Icons.star_rounded : Icons.star_border_rounded,
+                                      color: Colors.amber,
+                                      size: 14,
+                                    );
+                                  }),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              k.isiKomentar,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ],
       ),
     );
