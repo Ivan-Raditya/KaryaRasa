@@ -47,7 +47,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // Kategori disesuaikan dengan nilai kategoriResep di DB
   final List<String> _categories = [
-    'Semua', 'Makanan', 'Minuman', 'Dessert', 'Snack', 'Vegetarian',
+    'Semua', 'Makanan', 'Minuman', 'Jajanan',
   ];
 
   List<ResepData> get _filteredRecipes {
