@@ -166,6 +166,33 @@ class Database {
         .insert(komentar.toMap());
   }
 
+  Future<void> updateKomentar(int idKomentar, String isiKomentar, int skorRating) async {
+    final result = await supabase
+        .from('komentar')
+        .update({
+          'isiKomentar': isiKomentar,
+          'skor_rating': skorRating,
+        })
+        .eq('idKomentar', idKomentar)
+        .select();
+    
+    if (result.isEmpty) {
+      throw Exception('Gagal memperbarui. Pastikan Policy RLS untuk UPDATE di Supabase sudah benar (true).');
+    }
+  }
+
+  Future<void> deleteKomentar(int idKomentar) async {
+    final result = await supabase
+        .from('komentar')
+        .delete()
+        .eq('idKomentar', idKomentar)
+        .select();
+        
+    if (result.isEmpty) {
+      throw Exception('Gagal menghapus. Pastikan Policy RLS untuk DELETE di Supabase sudah benar (true).');
+    }
+  }
+
   Future<List<Komentar>> getKomentarByResep(int idResep) async {
     final result = await supabase
         .from('komentar')

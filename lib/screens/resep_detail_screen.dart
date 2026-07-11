@@ -187,6 +187,136 @@ Future<void> _postKomentar() async {
   }
 }
 
+  void _showEditKomentarDialog(Komentar komentar) {
+    if (komentar.idKomentar == null) return;
+    
+    final editController = TextEditingController(text: komentar.isiKomentar);
+    int editRating = komentar.skorRating;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text('Edit Komentar', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () => setStateDialog(() => editRating = index + 1),
+                        child: Icon(
+                          index < editRating ? Icons.star_rounded : Icons.star_border_rounded,
+                          color: Colors.amber,
+                          size: 32,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: editController,
+                    maxLines: 3,
+                    style: TextStyle(color: textColor, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Tulis komentar...',
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _terracotta, width: 1.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Batal', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final newIsi = editController.text.trim();
+                    if (newIsi.isNotEmpty) {
+                      try {
+                        await Database().updateKomentar(komentar.idKomentar!, newIsi, editRating);
+                        if (mounted) Navigator.pop(context);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Gagal mengubah komentar: $e')),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _terracotta,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Simpan', style: TextStyle(color: Colors.white, fontSize: 13)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteKomentarDialog(Komentar komentar) {
+    if (komentar.idKomentar == null) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Hapus Komentar', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text('Apakah Anda yakin ingin menghapus komentar ini?', style: TextStyle(color: secondaryTextColor, fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Batal', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await Database().deleteKomentar(komentar.idKomentar!);
+                if (mounted) Navigator.pop(context);
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal menghapus komentar: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Hapus', style: TextStyle(color: Colors.white, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -969,6 +1099,30 @@ const SizedBox(height: 16),
                                     );
                                   }),
                                 ),
+                                if (k.idPengguna == SessionManager.instance.idPengguna)
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert_rounded, size: 16, color: Colors.grey),
+                                    padding: EdgeInsets.zero,
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        height: 32,
+                                        child: Text('Edit', style: TextStyle(fontSize: 12)),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        height: 32,
+                                        child: Text('Hapus', style: TextStyle(fontSize: 12, color: Colors.red)),
+                                      ),
+                                    ],
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _showEditKomentarDialog(k);
+                                      } else if (value == 'delete') {
+                                        _showDeleteKomentarDialog(k);
+                                      }
+                                    },
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 4),
